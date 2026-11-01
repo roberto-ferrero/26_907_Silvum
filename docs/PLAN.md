@@ -73,7 +73,7 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 - [ ] 3.1 Rejilla de densidad foliar (32³ / 64³) construida en Worker
 - [ ] 3.2 Muestreo de cielo y sol con atenuación exponencial (CPU de referencia)
-- [ ] 3.3 Señal de espacio libre separada de la de luz (incluye evitar la maceta y el suelo: hoy las ramas péndulas los atraviesan)
+- [~] 3.3 Señal de espacio libre separada de la de luz (incluye evitar la maceta y el suelo: hecho el suelo; faltan la maceta y el espacio libre)
 - [ ] 3.4 Control de luz por el usuario (dirección e intensidad) como evento en el instante actual
 - [ ] 3.5 Kernel compute WebGPU (TSL) equivalente a la referencia CPU, con comparación de tolerancias
 
@@ -97,6 +97,17 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 - [x] 4.7 Flores: yemas florales, apertura, pétalos y caída
 - [x] 4.8 Frutos: cuajado, crecimiento, masa como carga, caída
 - [x] 4.9 Tipos `FlowerCohort` y `FruitState` en el núcleo
+
+Notas de la fase 4:
+
+- Presets en `src/presets/species.ts` (abeto `Abies alba`, roble `Quercus robur`, almendro `Prunus dulcis`); cada arquetipo conserva una especie genérica (`archetype:<id>`) con el calendario de la fase 2.
+- Hojas como cohortes por entrenudo; los rasgos de cada hoja se derivan de (semilla, cohorte, índice). Caducas con brotes cortos (rosetas en yemas latentes) para una densidad creíble; roble con marcescencia parcial.
+- La sombra usa las hojas como oclusores (más las yemas); en caducas cuenta el follaje de la temporada anterior durante la brotación.
+- El viento (`src/sim/wind.ts`) es un evento del entorno en el estado: cambia la caída de hojas, nunca la madera de una caduca (test).
+- Dibujo provisional (hasta la fase 6): hojas, flores y frutos instanciados con geometría por forma y color por hoja calculado en el Worker. Partículas visuales (`src/fx/falling.ts`) para hojas, pétalos y frutos que caen.
+- Morfología del roble revisada contra su canon (Quercus robur aislado; modelo de Rauh con hábito de bifurcación): pérdida de dominancia del líder hacia los 7-11 años con reiteración en ramas madre, aborto de yemas terminales (ramificación aparentemente simpodial y sinuosa), acrotonía, plagiotropía creciente hacia la base de la copa, poda natural de las ramas juveniles bajas (fuste limpio) y cielo lateral en la luz provisional. Métricas de silueta en `tests/crown-metrics.ts` y canon en `tests/oak-canon.test.ts` (40 años: anchura/altura ≈ 0,7-1,0, base de copa ≈ 25-30 %, ≥ 3 ramas madre, sin flecha).
+- Correcciones del motor: el déficit de luz de un eje se mide sobre su subárbol (antes una rama madre sin yemas propias moría con todas sus ramillas vivas); ningún entrenudo crece por debajo del sustrato (adelanto de 3.3); fuera dos costes cuadráticos (conteo de yemas y desprendimiento de ejes).
+- Pendiente para otras fases: la forma del abeto aún no es cónica y no hay conos; los mecanismos de arquitectura (`architecture` en el preset) están listos para aplicarlos al abeto y al almendro.
 
 ## Fase 5. Rig de ramas, peso y viento
 

@@ -5,6 +5,11 @@ import { normalizeOr, type Vec3 } from './vec3.ts';
  * Cada órgano fotosintético sombrea una pirámide de celdas por debajo. Se sustituirá en la
  * fase 3 por atenuación exponencial con muestras de cielo; la interfaz `LightField` se conserva.
  * Rejilla dispersa: solo existen las celdas con sombra.
+ *
+ * Añadido de la fase 4 (adelanto de 3.2): un término de CIELO LATERAL. La pirámide solo
+ * sombrea hacia abajo, así que un punto bajo y periférico de la copa nunca recibía la luz
+ * del horizonte, que es la que mantiene vivas las ramas bajas de un árbol aislado. Se
+ * estima con rayos horizontales que atenúan exponencialmente con la densidad de órganos.
  */
 export interface LightField {
   /** Exposición normalizada en [0, 1]. */
@@ -23,6 +28,11 @@ export interface ShadowGridParams {
   b: number;
   /** Luz plena: exposición = max(0, C - s) / C. */
   fullLight: number;
+  /** Peso del cielo lateral en la exposición (0 = solo la pirámide). */
+  lateralWeight: number;
+  /** Alcance de los rayos laterales (celdas) y atenuación por unidad de peso de órgano. */
+  lateralReach: number;
+  lateralAttenuation: number;
 }
 
 export const DEFAULT_SHADOW: ShadowGridParams = {
@@ -31,7 +41,22 @@ export const DEFAULT_SHADOW: ShadowGridParams = {
   a: 1,
   b: 2,
   fullLight: 4,
+  lateralWeight: 0,
+  lateralReach: 12,
+  lateralAttenuation: 0.35,
 };
+
+/** Direcciones horizontales de los rayos laterales (8 rumbos). */
+const LATERAL_DIRS: readonly [number, number][] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
 
 /**
  * Rejilla densa sobre la caja envolvente de los órganos (más un margen de `depth` celdas
@@ -40,6 +65,8 @@ export const DEFAULT_SHADOW: ShadowGridParams = {
  */
 export class ShadowGrid implements LightField {
   private readonly cells: Float32Array;
+  /** Peso de órganos por celda (para los rayos laterales). */
+  private readonly density: Float32Array;
   private readonly origin: [number, number, number];
   private readonly dims: [number, number, number];
 
@@ -65,6 +92,7 @@ export class ShadowGrid implements LightField {
     this.origin = [min[0] - m, min[1] - m, min[2] - m];
     this.dims = [max[0] - min[0] + 2 * m + 1, max[1] - min[1] + m + 2, max[2] - min[2] + 2 * m + 1];
     this.cells = new Float32Array(this.dims[0] * this.dims[1] * this.dims[2]);
+    this.density = new Float32Array(this.cells.length);
     // La pirámide es lineal en el peso: se agregan los órganos por celda y se propaga
     // una pirámide por celda ocupada (muchas yemas y hojas comparten celda).
     const [, ny, nz] = this.dims;
@@ -80,6 +108,7 @@ export class ShadowGrid implements LightField {
       const j = ((key - k) / nz) % ny;
       const i = (key - k - j * nz) / (ny * nz);
       this.addOccluderAtCell(i, j, k, byCell.get(key)!);
+      this.density[key] = byCell.get(key)!;
     }
   }
 
@@ -125,8 +154,29 @@ export class ShadowGrid implements LightField {
 
   exposure(p: Vec3): number {
     const [i, j, k] = this.cellOf(p);
-    const { fullLight } = this.params;
-    return Math.max(0, fullLight - this.shadowAtCell(i, j, k)) / fullLight;
+    const { fullLight, lateralWeight } = this.params;
+    const top = Math.max(0, fullLight - this.shadowAtCell(i, j, k)) / fullLight;
+    if (lateralWeight <= 0) return top;
+    return (1 - lateralWeight) * top + lateralWeight * this.lateralSky(i, j, k);
+  }
+
+  /** Transmisión media del cielo lateral: rayos horizontales desde la celda. */
+  private lateralSky(i: number, j: number, k: number): number {
+    const { lateralReach, lateralAttenuation } = this.params;
+    const [nx, ny, nz] = this.dims;
+    if (j < 0 || j >= ny) return 1;
+    let total = 0;
+    for (const [dx, dz] of LATERAL_DIRS) {
+      let acc = 0;
+      for (let d = 1; d <= lateralReach; d++) {
+        const ii = i + dx * d;
+        const kk = k + dz * d;
+        if (ii < 0 || kk < 0 || ii >= nx || kk >= nz) break; // fuera de la caja: cielo despejado
+        acc += this.density[(ii * ny + j) * nz + kk]!;
+      }
+      total += Math.exp(-lateralAttenuation * acc);
+    }
+    return total / LATERAL_DIRS.length;
   }
 
   favorableDirection(p: Vec3): Vec3 | null {

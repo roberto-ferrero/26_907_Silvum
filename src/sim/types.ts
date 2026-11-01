@@ -176,7 +176,8 @@ export interface TreeEvent {
     | 'axis-died'
     | 'axis-shed'
     | 'capacity-reached'
-    | 'environment-changed';
+    | 'environment-changed'
+    | 'leader-lost';
   id: number;
   detail?: string;
 }

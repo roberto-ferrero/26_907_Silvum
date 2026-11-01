@@ -57,6 +57,8 @@ export interface OrganContext {
   species: Species;
   light(): LightField;
   emit(record: Float32Array): void;
+  /** Próximo instante en que alguna cohorte tiene algo que hacer (caché derivada). */
+  nextLeafEventYears?: number;
 }
 
 const CH = Object.freeze({
@@ -161,6 +163,11 @@ function addLeafCohort(
   };
   scheduleBackgroundDrop(ctx, cohort, t);
   s.leafCohorts[id] = cohort;
+  ctx.nextLeafEventYears = Math.min(
+    ctx.nextLeafEventYears ?? -Infinity,
+    cohort.senescenceAtYears,
+    cohort.nextBackgroundDropYears,
+  );
 }
 
 function scheduleBackgroundDrop(ctx: OrganContext, cohort: LeafCohort, t: number): void {
@@ -215,9 +222,13 @@ export function updateLeaves(ctx: OrganContext, t0: number, t1: number, tick: nu
   const { state: s, species } = ctx;
   const gust = weeklyGust01(s.environment.wind, s.seed, tick);
   const windy = gust > 0.05;
+  // Sin viento y sin ninguna cohorte con eventos pendientes: nada que recorrer.
+  if (!windy && t1 < (ctx.nextLeafEventYears ?? -Infinity)) return;
   const fragility = species.leaves.windFragility;
+  let next = Infinity;
   for (const cohort of Object.values(s.leafCohorts)) {
     if (cohort.attachedMask === 0) continue;
+    next = Math.min(next, cohort.senescenceAtYears, cohort.nextBackgroundDropYears);
     // La mayoría de cohortes no hace nada en un tick: los rasgos se piden solo si hacen falta.
     if (!windy && t1 < cohort.senescenceAtYears && t1 < cohort.nextBackgroundDropYears) continue;
     const traits = leafTraits(s.seed, cohort.id, cohort.count);
@@ -266,9 +277,8 @@ export function updateLeaves(ctx: OrganContext, t0: number, t1: number, tick: nu
       }
     }
   }
+  ctx.nextLeafEventYears = next;
 }
-
-const SHORT_SHOOT_MAX_AGE_YEARS = 3;
 
 /**
  * Brotes cortos (braquiblastos): en la brotación, cada yema lateral latente y viable abre
@@ -282,7 +292,7 @@ export function flushShortShoots(ctx: OrganContext, year: number, t: number): vo
   for (const bud of Object.values(s.buds)) {
     if (bud.kind !== 'lateral' || bud.state !== 'dormant' || bud.eligibleFromYear > year) continue;
     // Solo madera joven: los braquiblastos se agotan en ramas viejas.
-    if (bud.segmentId === null || year - bud.bornAtYears > SHORT_SHOOT_MAX_AGE_YEARS) continue;
+    if (bud.segmentId === null || year - bud.bornAtYears > program.maxBudAgeYears) continue;
     const axis = s.axes[bud.axisId];
     const seg = s.segments[bud.segmentId];
     if (!axis || axis.woodState !== 'living' || !seg) continue;
@@ -486,6 +496,7 @@ export function pruneFlowers(s: TreeState): void {
 /** Ejes que acaban de morir: sus hojas se secan y caen, flores y frutos se pierden. */
 export function onAxesDied(ctx: OrganContext, t: number): void {
   const s = ctx.state;
+  ctx.nextLeafEventYears = -Infinity; // las hojas secas tienen eventos ya
   const dead = (axisId: number): boolean => s.axes[axisId]?.woodState !== 'living';
   for (const cohort of Object.values(s.leafCohorts)) {
     if (cohort.withered || !dead(cohort.axisId)) continue;

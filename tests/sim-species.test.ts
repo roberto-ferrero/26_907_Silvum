@@ -288,6 +288,7 @@ describe('determinismo y dibujo con órganos', () => {
   it('40 años de cada especie caben en pocos segundos', () => {
     const start = performance.now();
     for (const id of ['quercus-robur', 'prunus-dulcis']) grown(id, 7, 40);
-    expect(performance.now() - start).toBeLessThan(15000);
-  }, 30000);
+    // ~7 s en solitario; holgura para la ejecución en paralelo con otros ficheros y la CI.
+    expect(performance.now() - start).toBeLessThan(25000);
+  }, 60000);
 });

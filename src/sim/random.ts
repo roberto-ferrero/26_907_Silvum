@@ -58,4 +58,6 @@ export const Channel = Object.freeze({
   headingNoiseZ: 5,
   lengthJitter: 6,
   phyllotaxisStart: 7,
+  terminalAbortion: 8,
+  leaderLoss: 9,
 });

@@ -12,6 +12,7 @@ import {
   listArchetypes,
   type ArtisticScale,
   type AxisRole,
+  type RoleProgram,
 } from './morphotype.ts';
 import {
   DEFAULT_CALENDAR,
@@ -72,7 +73,7 @@ export interface LeafProgram {
    * roseta de hojas sin alargar entrenudos (braquiblastos). Probabilidad por yema a luz
    * plena y hojas por roseta. null = no hay.
    */
-  shortShoots: { probability: number; leaves: number } | null;
+  shortShoots: { probability: number; leaves: number; maxBudAgeYears: number } | null;
   /** Vida de la hoja en años (perennes); 1 en caducas. */
   lifespanYears: number;
   lifespanJitter: number;
@@ -125,6 +126,38 @@ export interface FruitingProgram {
   colors: { young: Hex; ripe: Hex };
 }
 
+/**
+ * Arquitectura (modelo de Rauh modificado y su plasticidad): mecanismos que deciden la
+ * silueta más allá de los programas de rol. `null`/vacío = sin el mecanismo.
+ */
+export interface ArchitectureProgram {
+  /**
+   * Edad (años, intervalo) en la que el líder pierde la dominancia: muere su yema terminal
+   * y las laterales altas reiteran el tronco (bifurcación de los robles abiertos).
+   */
+  leaderLossYears: Window | null;
+  /** Probabilidad anual de que una yema terminal aborte (crecimiento aparente simpodial). */
+  terminalAbortion: Partial<Record<AxisRole, number>>;
+  /**
+   * Poda natural (sustituto hasta la luz de la fase 3): las laterales no estructurales del
+   * tronco (radio < 40 % del portador) insertas por debajo de esta fracción de la altura
+   * mueren al superar `minAgeYears`; así se forma el fuste limpio.
+   */
+  selfPruning: { belowHeightFraction: number; minAgeYears: number } | null;
+  /**
+   * Peso del cielo lateral en la luz provisional (0 = solo sombra desde arriba). Necesario
+   * para árboles de luz aislados con ramas bajas vivas; la fase 3 lo hará general.
+   */
+  lateralSkyWeight: number;
+}
+
+export const NO_ARCHITECTURE: ArchitectureProgram = {
+  leaderLossYears: null,
+  terminalAbortion: {},
+  selfPruning: null,
+  lateralSkyWeight: 0,
+};
+
 export interface SpeciesPreset {
   id: string;
   name: string;
@@ -140,7 +173,17 @@ export interface SpeciesPreset {
   morphology: {
     inclinationOffsetDeg: Partial<Record<AxisRole, number>>;
     branchingFactor: number;
+    /** Programas de rol propios de la especie (sustituyen a los del arquetipo). */
+    roles?: Partial<Record<AxisRole, RoleProgram>>;
+    /**
+     * Grados que se suman a la inclinación objetivo de las ramas según lo baja que esté su
+     * punta en el árbol (0 en la cima, todo en la base): copa en cúpula, ramas bajas abiertas.
+     */
+    lowerCrownSpreadDeg: number;
+    /** Sesgo de activación por posición en la unidad de crecimiento (acrotonía). */
+    activationBiasKnots?: [number, number][];
   };
+  architecture: ArchitectureProgram;
   phenology: PhenologyCalendar;
   leaves: LeafProgram;
   flowering: FloweringProgram | null;
@@ -233,7 +276,8 @@ function genericSpecies(archetypeId: string): SpeciesPreset {
     archetypeId,
     scale: {},
     phyllotaxis: { mode: 'spiral', divergenceDeg: archetype.scale.divergenceDeg },
-    morphology: { inclinationOffsetDeg: {}, branchingFactor: 1 },
+    morphology: { inclinationOffsetDeg: {}, branchingFactor: 1, lowerCrownSpreadDeg: 0 },
+    architecture: NO_ARCHITECTURE,
     phenology: DEFAULT_CALENDAR,
     leaves: conifer ? GENERIC_NEEDLE : GENERIC_BROADLEAF,
     flowering: null,
@@ -287,6 +331,26 @@ export function speciesProblems(p: SpeciesPreset): string[] {
   }
   for (const role of Object.keys(p.morphology.inclinationOffsetDeg)) {
     if (!(AXIS_ROLES as readonly string[]).includes(role)) out.push(`rol desconocido: ${role}`);
+  }
+  for (const [role, program] of Object.entries(p.morphology.roles ?? {})) {
+    if (!(AXIS_ROLES as readonly string[]).includes(role)) out.push(`rol desconocido: ${role}`);
+    if (!program || program.keyframes.length < 2) out.push(`${role}: faltan keyframes`);
+  }
+  const a = p.architecture;
+  if (
+    a.leaderLossYears &&
+    !(a.leaderLossYears[0] > 0 && a.leaderLossYears[0] <= a.leaderLossYears[1])
+  ) {
+    out.push('leaderLossYears no válido');
+  }
+  for (const v of Object.values(a.terminalAbortion)) {
+    if (!(v >= 0 && v < 1)) out.push('terminalAbortion en [0, 1)');
+  }
+  if (
+    a.selfPruning &&
+    !(a.selfPruning.belowHeightFraction > 0 && a.selfPruning.belowHeightFraction < 0.6)
+  ) {
+    out.push('selfPruning.belowHeightFraction en (0, 0.6)');
   }
   out.push(...calendarProblems(p.phenology));
   const l = p.leaves;

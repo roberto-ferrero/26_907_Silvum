@@ -5,7 +5,42 @@
  * orientativas de un clima templado del hemisferio norte (fase 0 = 1 de enero).
  * Las referencias botánicas solo guían el orden y el carácter de cada proceso.
  */
-import type { SpeciesPreset } from '../sim/species.ts';
+import type { MorphologicalFrame, RoleProgram } from '../sim/morphotype.ts';
+import type { ArchitectureProgram, SpeciesPreset } from '../sim/species.ts';
+
+/** Sin mecanismos de arquitectura propios (los datos no importan valores del núcleo). */
+const NO_ARCHITECTURE: ArchitectureProgram = {
+  leaderLossYears: null,
+  terminalAbortion: {},
+  selfPruning: null,
+  lateralSkyWeight: 0,
+};
+
+type Frame = [
+  stage: number,
+  angleAtBirthDeg: number,
+  targetInclinationDeg: number,
+  branchingIntensity: number,
+  apicalControlLambda: number,
+  persistence: number,
+];
+
+/** Programa de rol compacto: keyframes [etapa, ángulo, inclinación, ramificación, λ, persistencia]. */
+function role(tropisms: MorphologicalFrame['tropismWeights'], ...frames: Frame[]): RoleProgram {
+  return {
+    stiffnessYoungPa: null,
+    maximumShootLengthM: null,
+    keyframes: frames.map(([stage, angle, incl, branching, lambda, persistence]) => ({
+      developmentalStage: stage,
+      angleAtBirthDeg: angle,
+      targetInclinationDeg: incl,
+      branchingIntensity: branching,
+      apicalControlLambda: lambda,
+      persistence,
+      tropismWeights: tropisms,
+    })),
+  };
+}
 
 /**
  * Abeto (Abies alba). Cónica, perenne, acículas planas en dos filas (pectinadas) sobre las
@@ -21,7 +56,8 @@ const ABIES_ALBA: SpeciesPreset = {
   archetypeId: 'conical-conifer',
   scale: { maxMetamersPerShoot: 6, apicalInhibition: 0.25, maturityYears: 45 },
   phyllotaxis: { mode: 'spiral', divergenceDeg: 137.5 },
-  morphology: { inclinationOffsetDeg: { branch: 4 }, branchingFactor: 1 },
+  morphology: { inclinationOffsetDeg: { branch: 4 }, branchingFactor: 1, lowerCrownSpreadDeg: 0 },
+  architecture: NO_ARCHITECTURE,
   phenology: {
     budRelease: [0.36, 0.42],
     elongation: [0.37, 0.52],
@@ -81,9 +117,62 @@ const QUERCUS_ROBUR: SpeciesPreset = {
   status: 'illustrative-not-calibrated',
   description: 'Caducifolio de copa amplia, hoja lobulada y bellotas en otoño.',
   archetypeId: 'broad-crown-broadleaf',
-  scale: { apicalInhibition: 0.04, budViabilityYears: 6, maturityYears: 45 },
+  scale: {
+    apicalInhibition: 0.04,
+    budViabilityYears: 6,
+    maturityYears: 45,
+    headingNoise: 0.42,
+    maxTurnRadPerM: 13,
+    vigorAlpha: 7.5,
+    maxMetamersPerShoot: 8,
+    roleLengthFactor: { trunk: 1, scaffold: 1.05, branch: 0.95, twig: 0.7 },
+  },
   phyllotaxis: { mode: 'spiral', divergenceDeg: 144 },
-  morphology: { inclinationOffsetDeg: { scaffold: 4, branch: 3 }, branchingFactor: 1.05 },
+  morphology: {
+    inclinationOffsetDeg: {},
+    branchingFactor: 1,
+    lowerCrownSpreadDeg: 30,
+    // [etapa, ángulo de nacimiento, inclinación objetivo, ramificación, λ, persistencia]
+    roles: {
+      trunk: role(
+        { light: 0.45, targetOrientation: 0.9, headingPersistence: 1, spaceAvoidance: 0.15 },
+        [0, 0, 0, 0.75, 0.48, 0.98],
+        [0.4, 0, 6, 0.6, 0.46, 0.97],
+        [1, 0, 12, 0.45, 0.45, 0.95],
+      ),
+      scaffold: role(
+        { light: 0.2, targetOrientation: 1.1, headingPersistence: 0.8, spaceAvoidance: 0.15 },
+        [0, 35, 40, 0.75, 0.5, 0.96],
+        [0.5, 50, 60, 0.8, 0.49, 0.94],
+        [1, 60, 74, 0.7, 0.48, 0.92],
+      ),
+      branch: role(
+        { light: 0.3, targetOrientation: 0.9, headingPersistence: 0.8, spaceAvoidance: 0.15 },
+        [0, 50, 62, 0.65, 0.5, 0.82],
+        [0.5, 60, 75, 0.7, 0.49, 0.78],
+        [1, 65, 85, 0.6, 0.48, 0.72],
+      ),
+      twig: role(
+        { light: 0.6, targetOrientation: 0.6, headingPersistence: 0.8, spaceAvoidance: 0.15 },
+        [0, 50, 60, 0.4, 0.5, 0.7],
+        [0.5, 55, 70, 0.4, 0.49, 0.65],
+        [1, 60, 80, 0.32, 0.49, 0.58],
+      ),
+    },
+    // Acrotonía fuerte: las ramas salen del extremo del brote anual (pseudoverticilos).
+    activationBiasKnots: [
+      [0, 0.03],
+      [0.5, 0.12],
+      [0.8, 0.5],
+      [1, 1],
+    ],
+  },
+  architecture: {
+    leaderLossYears: [7, 11],
+    terminalAbortion: { scaffold: 0.06, branch: 0.22, twig: 0.25 },
+    selfPruning: { belowHeightFraction: 0.25, minAgeYears: 5 },
+    lateralSkyWeight: 0.3,
+  },
   phenology: {
     budRelease: [0.28, 0.36],
     elongation: [0.29, 0.47],
@@ -95,7 +184,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
   leaves: {
     form: {
       shape: 'lobed',
-      lengthM: 0.032,
+      lengthM: 0.04,
       widthRatio: 0.56,
       lobes: 5,
       lobeDepth: 0.42,
@@ -110,7 +199,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     perMetamer: 1,
     insertionDeg: 48,
     arrangement: 'node',
-    shortShoots: { probability: 0.5, leaves: 4 },
+    shortShoots: { probability: 0.75, leaves: 5, maxBudAgeYears: 6 },
     lifespanYears: 1,
     lifespanJitter: 0,
     senescenceSpreadYears: 0.06,
@@ -164,7 +253,12 @@ const PRUNUS_DULCIS: SpeciesPreset = {
   archetypeId: 'broad-crown-broadleaf',
   scale: { apicalInhibition: 0.08, budViabilityYears: 4, maturityYears: 35 },
   phyllotaxis: { mode: 'spiral', divergenceDeg: 144 },
-  morphology: { inclinationOffsetDeg: { scaffold: -12, branch: -6 }, branchingFactor: 0.95 },
+  morphology: {
+    inclinationOffsetDeg: { scaffold: -12, branch: -6 },
+    branchingFactor: 0.95,
+    lowerCrownSpreadDeg: 0,
+  },
+  architecture: NO_ARCHITECTURE,
   phenology: {
     budRelease: [0.19, 0.28],
     elongation: [0.2, 0.45],
@@ -191,7 +285,7 @@ const PRUNUS_DULCIS: SpeciesPreset = {
     perMetamer: 1,
     insertionDeg: 45,
     arrangement: 'node',
-    shortShoots: { probability: 0.55, leaves: 4 },
+    shortShoots: { probability: 0.55, leaves: 4, maxBudAgeYears: 3 },
     lifespanYears: 1,
     lifespanJitter: 0,
     senescenceSpreadYears: 0.05,
