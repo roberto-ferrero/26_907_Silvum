@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1, 2 y 4 completadas; fase 5 casi completa (falta 5.8, deformación en GPU); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
+- Estado: fases 0, 1, 2 y 4 completadas; fases 5, 6 y 7 casi completas (pendientes 5.8, 6.1, 6.4, vigor en 7.6 y luz en 7.4); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -146,12 +146,20 @@ Notas de la fase 5:
 
 ## Fase 7. Interfaz y control del tiempo
 
-- [ ] 7.1 Selector de especie y semilla (cambiar reconstruye desde la semilla)
-- [ ] 7.2 Línea de tiempo: reproducir, pausar, velocidad, salto a año
-- [ ] 7.3 Rebobinado con instantáneas anuales y repetición de eventos
-- [ ] 7.4 Controles de viento, luz y atmósfera
-- [ ] 7.5 Indicadores de edad simulada, estación y etapa morfológica
-- [ ] 7.6 Panel de diagnóstico ocultable: esqueleto, mapa de luz, vigor, registro de eventos
+- [x] 7.1 Selector de especie y semilla (cambiar reconstruye desde la semilla)
+- [x] 7.2 Línea de tiempo: reproducir, pausar, velocidad, salto a año
+- [x] 7.3 Rebobinado con instantáneas anuales y repetición de eventos
+- [~] 7.4 Controles de viento, luz y atmósfera
+- [x] 7.5 Indicadores de edad simulada, estación y etapa morfológica
+- [~] 7.6 Panel de diagnóstico ocultable: esqueleto, mapa de luz, vigor, registro de eventos
+
+Notas de la fase 7:
+
+- Arranque por defecto a los 25 años, con el ciclo de hojas en pausa y en primavera (mayo); `?years=` sigue fijando el año inicial y `?leafPlay=1` arranca las estaciones.
+- Panel en secciones plegables: Árbol, Tiempo (línea de tiempo 0-80 años, crecer/pausa, velocidad), Hojas (ciclo, reproducir estaciones, estación, duración del año, número × y tamaño × de hojas), Entorno (viento, dirección, bruma), Estado y Diagnóstico.
+- Línea de tiempo (`src/worker/timeline.ts`): instantáneas del estado cada 3 años, comprimidas (gzip) y precalculadas en segundo plano hasta los 80 años; un salto restaura la anterior más cercana y avanza el resto (< 1 s con el precálculo hecho). El viento es un evento: invalida lo posterior y el precálculo se rehace desde ahí. Compactación anual del estado (fuera yemas laterales muertas y unidades de crecimiento terminadas).
+- Diagnóstico: esqueleto de cilindros, mapa de luz de las yemas (azul sombra, amarillo luz) y registro de los últimos eventos. Pendiente: vista de vigor.
+- 7.4: viento y atmósfera hechos; el control de la luz depende de la fase 3.
 
 ## Fase 8. Postura activa y mecánica avanzada
 

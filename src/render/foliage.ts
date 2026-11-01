@@ -34,6 +34,10 @@ export class FoliageView {
   private leafBuffers: OrganBuffers | null = null;
   private flowerBuffers: OrganBuffers | null = null;
   private rig: BranchRig | null = null;
+  /** Aspecto de las hojas elegido en el panel (solo dibujo). */
+  private look = { count: 1, size: 1 };
+  private leafForm: RenderSnapshot['leafForm'] | null = null;
+  private baseCluster = 1;
   private individual = '';
   private lastArrivalS = 0;
   /** Último instante del reloj de partículas recibido (ver `RenderSnapshot.clockYears`). */
@@ -63,8 +67,9 @@ export class FoliageView {
       // Otro árbol (o vuelta atrás): fuera las partículas del anterior.
       this.individual = key;
       this.falling.particles.length = 0;
-      const cluster = species.leaves.clusterSize ?? 1;
-      this.leaves.setGeometry(key, () => createLeafClusterGeometry(snapshot.leafForm, cluster));
+      this.leafForm = snapshot.leafForm;
+      this.baseCluster = species.leaves.clusterSize ?? 1;
+      this.applyLeafGeometry(key);
       this.fallenLeaves.setGeometry(key, () => createLeafGeometry(snapshot.leafForm));
       if (species.flowering) {
         const program = species.flowering;
@@ -96,9 +101,33 @@ export class FoliageView {
     if (!this.latest) return;
     this.leafBuffers = leaves;
     this.flowerBuffers = flowers;
-    this.leaves.update(leaves, this.rig ?? undefined);
+    this.leaves.update(leaves, this.rig ?? undefined, this.leafLook());
     this.flowers.update(flowers, this.rig ?? undefined);
     this.spawn(detachments, clockYears, nowS);
+  }
+
+  /**
+   * Número y tamaño de las hojas (multiplicadores, solo dibujo). Por debajo de 1, se
+   * dibuja una fracción estable de las hojas; por encima, cada manojo lleva más hojas.
+   */
+  setLeafLook(count: number, size: number): void {
+    this.look = { count, size };
+    this.applyLeafGeometry(this.individual);
+    this.pose();
+  }
+
+  private applyLeafGeometry(key: string): void {
+    const form = this.leafForm;
+    if (!form) return;
+    const cluster = Math.max(
+      1,
+      Math.min(8, Math.round(this.baseCluster * Math.max(1, this.look.count))),
+    );
+    this.leaves.setGeometry(`${key}:${cluster}`, () => createLeafClusterGeometry(form, cluster));
+  }
+
+  private leafLook(): { keep: number; scale: number } {
+    return { keep: Math.min(1, this.look.count), scale: this.look.size };
   }
 
   /** Vuelve a posar hojas, flores y frutos (tras moverse el rig o llegar datos). */
@@ -111,7 +140,7 @@ export class FoliageView {
     const s = this.latest;
     if (!s) return;
     const rig = this.rig ?? undefined;
-    if (this.leafBuffers) this.leaves.update(this.leafBuffers, rig);
+    if (this.leafBuffers) this.leaves.update(this.leafBuffers, rig, this.leafLook());
     if (this.flowerBuffers) this.flowers.update(this.flowerBuffers, rig);
     this.fruits.update(s.fruits, rig);
   }

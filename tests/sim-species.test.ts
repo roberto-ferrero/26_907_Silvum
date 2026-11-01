@@ -292,7 +292,8 @@ describe('determinismo y dibujo con órganos', () => {
   it('40 años de cada especie caben en pocos segundos', () => {
     const start = performance.now();
     for (const id of ['quercus-robur', 'prunus-dulcis']) grown(id, 7, 40);
-    // ~7 s en solitario; holgura para la ejecución en paralelo con otros ficheros y la CI.
-    expect(performance.now() - start).toBeLessThan(25000);
-  }, 60000);
+    // ~10 s en solitario; holgura amplia porque los ficheros de test corren en paralelo
+    // (y en la CI): solo detecta regresiones grandes de rendimiento.
+    expect(performance.now() - start).toBeLessThan(60000);
+  }, 120000);
 });

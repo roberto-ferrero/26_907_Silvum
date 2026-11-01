@@ -8,9 +8,13 @@ export type ToWorker =
   | { type: 'play'; yearsPerSecond: number }
   | { type: 'pause' }
   | { type: 'advance'; years: number }
+  /** Salto a un año (adelante o atrás) con las instantáneas de la línea de tiempo. */
+  | { type: 'seek'; years: number }
   | { type: 'wind'; wind: WindSettings }
   /** Ciclo de hojas: ligado al crecimiento o con su propia velocidad (años visuales/s). */
-  | { type: 'leafCycle'; mode: LeafCycleMode; yearsPerSecond: number };
+  | { type: 'leafCycle'; mode: LeafCycleMode; yearsPerSecond: number; playing: boolean }
+  /** Fija la fase del año que muestra el ciclo de hojas (sin soltar hojas por el salto). */
+  | { type: 'leafPhase'; phase: number };
 
 /** Mensajes Worker → hilo principal. */
 export type FromWorker =
@@ -24,4 +28,8 @@ export type FromWorker =
       clockYears: number;
       phase: number;
     }
+  /** Años de la línea de tiempo ya precalculados (saltos rápidos). */
+  | { type: 'cache'; years: number }
+  /** El Worker está calculando un salto (la vista puede mostrarlo). */
+  | { type: 'busy'; busy: boolean }
   | { type: 'error'; message: string };

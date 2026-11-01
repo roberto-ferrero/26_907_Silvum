@@ -3,7 +3,7 @@
  * Ejecuta los ticks biológicos fuera del hilo de render (fase 2.11). El reloj biológico es
  * fijo; la velocidad solo decide cuántos ticks se procesan por segundo real.
  */
-import { DT_YEARS, seasonPhase } from '../sim/clock.ts';
+import { DT_YEARS } from '../sim/clock.ts';
 import {
   buildCycleFlowers,
   buildCycleLeaves,
@@ -16,6 +16,10 @@ import { buildRenderSnapshot } from '../sim/snapshot.ts';
 import { TreeSimulation } from '../sim/tree.ts';
 import type { WindSettings } from '../sim/wind.ts';
 import type { FromWorker, ToWorker } from './protocol.ts';
+import { Timeline } from './timeline.ts';
+
+/** Extremo de la línea de tiempo (años), el mismo que muestra el panel. */
+const TIMELINE_MAX_YEARS = 80;
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -36,9 +40,13 @@ let wind: WindSettings | null = null;
  */
 let leafMode: LeafCycleMode = 'free';
 let leafYearsPerSecond = 1 / 40;
-const leafClock: LeafCycleClock = { phase: 0, years: 0 };
+let leafPlaying = false;
+/** Arranca en primavera, con el ciclo en pausa (el panel puede cambiarlo). */
+const leafClock: LeafCycleClock = { phase: 0.4, years: 0 };
 let leafTimer: ReturnType<typeof setInterval> | null = null;
 let lastLeafTick = 0;
+
+const timeline = new Timeline(TIMELINE_MAX_YEARS, (years) => post({ type: 'cache', years }));
 
 /** Con el ciclo libre, las caídas biológicas de hojas no se dibujan (las pone el ciclo). */
 function visualDetachments(records: Float32Array): Float32Array {
@@ -78,6 +86,11 @@ function leafTick(): void {
   const advance = leafYearsPerSecond * dt;
   leafClock.phase = (leafClock.phase + advance) % 1;
   leafClock.years += advance;
+  publishFoliage(prev);
+}
+
+/** Publica hojas y flores del ciclo visual (y las caídas desde `prev`). */
+function publishFoliage(prev: number): void {
   const cycle = cycleLeaves(prev);
   if (!cycle) return;
   const leaves = cycle.leaves.data.slice();
@@ -96,10 +109,11 @@ function leafTick(): void {
   );
 }
 
-function setLeafCycle(mode: LeafCycleMode, rate: number): void {
+function setLeafCycle(mode: LeafCycleMode, rate: number, playing: boolean): void {
   leafMode = mode;
   leafYearsPerSecond = Math.max(0, rate);
-  const running = mode === 'free' && leafYearsPerSecond > 0;
+  leafPlaying = playing;
+  const running = mode === 'free' && leafPlaying && leafYearsPerSecond > 0;
   if (running && leafTimer === null) {
     lastLeafTick = performance.now();
     leafTimer = setInterval(leafTick, FRAME_MS);
@@ -133,6 +147,7 @@ function publish(): void {
   const flowers = snapshot.flowers.data.slice();
   const fruits = snapshot.fruits.data.slice();
   const detachments = snapshot.detachments.slice();
+  const budLight = snapshot.budLight.slice();
   const { bark } = snapshot;
   post(
     {
@@ -144,9 +159,11 @@ function publish(): void {
         flowers: { count: snapshot.flowers.count, data: flowers },
         fruits: { count: snapshot.fruits.count, data: fruits },
         detachments,
+        budLight,
       },
     },
     [
+      budLight.buffer,
       segments.buffer,
       leaves.buffer,
       flowers.buffer,
@@ -169,6 +186,7 @@ function runBatch(): void {
   let stepped = 0;
   while (pendingTicks >= 1 && performance.now() - start < BUDGET_MS) {
     sim.step();
+    timeline.record(sim.state);
     pendingTicks -= 1;
     stepped++;
   }
@@ -186,21 +204,67 @@ function setPlaying(rate: number): void {
   }
 }
 
-self.onmessage = (event: MessageEvent<ToWorker>) => {
+/**
+ * Salto a `years`: desde la instantánea más cercana anterior (o desde el estado actual si
+ * está más cerca y el salto es hacia delante), avanzando el resto.
+ */
+async function seek(years: number): Promise<void> {
+  if (!sim) return;
+  const target = Math.max(0, Math.min(TIMELINE_MAX_YEARS, years));
+  const current = sim.state.timeYears;
+  if (Math.abs(target - current) < DT_YEARS / 2) return publish();
+  timeline.pause();
+  post({ type: 'busy', busy: true });
   try {
-    const msg = event.data;
+    const checkpoint = timeline.nearest(target);
+    const fromCurrent = target >= current && (checkpoint === null || current >= checkpoint);
+    if (!fromCurrent && checkpoint !== null) {
+      sim = new TreeSimulation({ state: await timeline.restore(checkpoint) });
+    }
+    const ticks = Math.round((target - sim.state.timeYears) / DT_YEARS);
+    for (let i = 0; i < ticks; i++) {
+      sim.step();
+      timeline.record(sim.state);
+    }
+    sim.drainDetachments();
+    publish();
+  } finally {
+    post({ type: 'busy', busy: false });
+    timeline.resume();
+  }
+}
+
+/** Los mensajes se atienden en orden, también los asíncronos (saltos). */
+let queue: Promise<void> = Promise.resolve();
+
+self.onmessage = (event: MessageEvent<ToWorker>) => {
+  queue = queue
+    .then(() => handle(event.data))
+    .catch((error: unknown) => {
+      post({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+    });
+};
+
+async function handle(msg: ToWorker): Promise<void> {
+  {
     switch (msg.type) {
       case 'reset':
         sim = new TreeSimulation({ speciesId: msg.speciesId, seed: msg.seed });
         if (wind) sim.setWind(wind);
-        leafClock.phase = seasonPhase(sim.state.timeYears);
         leafClock.years = 0;
         pendingTicks = 0;
+        timeline.reset(sim.state);
         publish();
         break;
       case 'wind':
         wind = msg.wind;
-        sim?.setWind(msg.wind);
+        if (sim) {
+          sim.setWind(msg.wind);
+          timeline.invalidateAfter(sim.state);
+        }
+        break;
+      case 'seek':
+        await seek(msg.years);
         break;
       case 'play':
         setPlaying(msg.yearsPerSecond);
@@ -211,18 +275,18 @@ self.onmessage = (event: MessageEvent<ToWorker>) => {
       case 'advance':
         if (sim) {
           sim.advanceYears(msg.years);
-          // El follaje empieza en la estación a la que se ha saltado.
-          leafClock.phase = seasonPhase(sim.state.timeYears);
           sim.drainDetachments();
           publish();
         }
         break;
       case 'leafCycle':
-        setLeafCycle(msg.mode, msg.yearsPerSecond);
+        setLeafCycle(msg.mode, msg.yearsPerSecond, msg.playing);
         publish();
         break;
+      case 'leafPhase':
+        leafClock.phase = ((msg.phase % 1) + 1) % 1;
+        publishFoliage(leafClock.phase);
+        break;
     }
-  } catch (error) {
-    post({ type: 'error', message: error instanceof Error ? error.message : String(error) });
   }
-};
+}

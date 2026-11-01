@@ -66,8 +66,24 @@ export class OrganView {
    * Copia `count` órganos del búfer (stride `ORGAN_STRIDE`). Con `rig`, cada órgano sigue
    * la pose deformada del nudo de su entrenudo.
    */
-  update(buffers: OrganBuffers, rig?: BranchRig): void {
-    this.write(buffers.count, (i, out) => {
+  update(buffers: OrganBuffers, rig?: BranchRig, look?: { keep: number; scale: number }): void {
+    // Con `look.keep` < 1 se dibuja un subconjunto estable de órganos (por su posición).
+    let indices: number[] | null = null;
+    if (look && look.keep < 0.999) {
+      indices = [];
+      const d = buffers.data;
+      for (let i = 0; i < buffers.count; i++) {
+        const o = i * ORGAN_STRIDE;
+        const h =
+          Math.abs(
+            Math.sin(d[o]! * 12.9898 + d[o + 1]! * 78.233 + d[o + 2]! * 37.719) * 43758.5453,
+          ) % 1;
+        if (h < look.keep) indices.push(i);
+      }
+    }
+    const scaleMul = look?.scale ?? 1;
+    this.write(indices ? indices.length : buffers.count, (k, out) => {
+      const i = indices ? indices[k]! : k;
       const o = i * ORGAN_STRIDE;
       const d = buffers.data;
       if (rig?.rig) {
@@ -82,7 +98,7 @@ export class OrganView {
         out.position.set(d[o]!, d[o + 1]!, d[o + 2]!);
         out.quaternion.set(d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!);
       }
-      out.scale = d[o + 7]!;
+      out.scale = d[o + 7]! * scaleMul;
       out.color[0] = d[o + 8]!;
       out.color[1] = d[o + 9]!;
       out.color[2] = d[o + 10]!;

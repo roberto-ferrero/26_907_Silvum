@@ -71,6 +71,43 @@ export interface RenderSnapshot {
   clockYears: number;
   /** Fase del año que muestra el follaje (la biológica o la del ciclo de hojas). */
   foliagePhase: number;
+  /** Últimos eventos del motor, legibles (panel de diagnóstico). */
+  recentEvents: string[];
+  /** Yemas vivas para el mapa de luz: x, y, z, exposición [0, 1] (4 floats). */
+  budLight: Float32Array;
+}
+
+const EVENT_NAMES: Record<string, string> = {
+  'bud-activated': 'yema activada',
+  'axis-born': 'nace eje',
+  'axis-died': 'muere eje',
+  'axis-shed': 'cae rama',
+  'capacity-reached': 'capacidad alcanzada',
+  'environment-changed': 'cambio de entorno',
+  'leader-lost': 'pierde el líder',
+};
+
+function recentEvents(s: TreeState, n = 14): string[] {
+  return s.events
+    .slice(-n)
+    .reverse()
+    .map((e) => {
+      const name = EVENT_NAMES[e.kind] ?? e.kind;
+      return `${e.timeYears.toFixed(2)}  ${name} #${e.id}${e.detail ? ` (${e.detail})` : ''}`;
+    });
+}
+
+function budLight(s: TreeState): Float32Array {
+  const live = Object.values(s.buds).filter(
+    (b) => b.state !== 'dead' && b.segmentId !== null && s.axes[b.axisId]?.woodState === 'living',
+  );
+  const out = new Float32Array(live.length * 4);
+  live.forEach((b, i) => {
+    const seg = s.segments[b.segmentId!];
+    if (!seg) return;
+    out.set([seg.end[0], seg.end[1], seg.end[2], b.exposure01], i * 4);
+  });
+  return out;
 }
 
 function writeOrgan(
@@ -248,5 +285,7 @@ export function buildRenderSnapshot(
     bark: buildBarkMesh(s),
     clockYears: s.timeYears,
     foliagePhase: phase,
+    recentEvents: recentEvents(s),
+    budLight: budLight(s),
   };
 }

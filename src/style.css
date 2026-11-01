@@ -118,3 +118,64 @@ body {
   font-size: 11px;
   opacity: 0.6;
 }
+
+.panel {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.panel details {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid rgb(0 0 0 / 0.08);
+  padding-top: 6px;
+}
+
+.panel details > :not(summary) {
+  margin-top: 8px;
+}
+
+.panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.panel .group {
+  display: grid;
+  gap: 8px;
+}
+
+.panel .grow {
+  flex: 1;
+}
+
+.panel .align-end {
+  align-self: end;
+  flex: 0 0 auto;
+}
+
+.panel .check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.panel .muted {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.panel .busy {
+  color: #9a5b12;
+}
+
+.panel .events {
+  white-space: pre;
+  font:
+    10px/1.35 ui-monospace,
+    monospace;
+  max-height: 140px;
+  overflow: auto;
+  opacity: 0.8;
+}

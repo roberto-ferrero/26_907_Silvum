@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { BranchRig } from './fx/rig.ts';
 import { BarkView } from './render/bark.ts';
+import { LightMapView } from './render/light-map.ts';
 import { createPost } from './render/post.ts';
 import { FoliageView } from './render/foliage.ts';
 import { groundHeightLocal } from './render/pot.ts';
@@ -118,11 +119,13 @@ async function main(): Promise<void> {
   const treeRoot = new THREE.Group();
   treeRoot.position.copy(stage.plantingPoint);
   stage.scene.add(treeRoot);
-  // Corteza continua; `?skeleton=1` muestra la vista de diagnóstico con cilindros.
-  const showSkeleton = params.get('skeleton') === '1';
+  // Corteza continua; el diagnóstico puede cambiarla por la vista de cilindros.
+  let showSkeleton = params.get('skeleton') === '1';
   const skeleton = new SkeletonView();
   const bark = new BarkView();
   treeRoot.add(showSkeleton ? skeleton.object : bark.object);
+  const lightMap = new LightMapView();
+  treeRoot.add(lightMap.object);
   const foliage = new FoliageView(groundHeightLocal());
   treeRoot.add(foliage.object);
   const clock = new THREE.Timer();
@@ -142,13 +145,37 @@ async function main(): Promise<void> {
     onPause: () => send({ type: 'pause' }),
     onWind: (wind) => send({ type: 'wind', wind }),
     onHaze: (haze) => stage.setHaze(haze),
-    onLeafCycle: (mode, yearsPerSecond) => send({ type: 'leafCycle', mode, yearsPerSecond }),
+    onLeafCycle: (mode, yearsPerSecond, playing) =>
+      send({ type: 'leafCycle', mode, yearsPerSecond, playing }),
+    onLeafPhase: (phase) => {
+      send({ type: 'leafPhase', phase });
+      stage.setSeason(phase);
+    },
+    onLeafLook: (count, size) => foliage.setLeafLook(count, size),
+    onSeek: (years) => send({ type: 'seek', years }),
+    onDiagnostics: (options) => {
+      if (options.skeleton !== showSkeleton) {
+        treeRoot.remove(showSkeleton ? skeleton.object : bark.object);
+        showSkeleton = options.skeleton;
+        treeRoot.add(showSkeleton ? skeleton.object : bark.object);
+        if (latest && showSkeleton) skeleton.update(latest);
+      }
+      lightMap.object.visible = options.lightMap;
+    },
   });
 
   worker.onmessage = (event: MessageEvent<FromWorker>) => {
     const msg = event.data;
     if (msg.type === 'error') {
       console.error('[Silvum] Worker:', msg.message);
+      return;
+    }
+    if (msg.type === 'cache') {
+      panel.updateCache(msg.years);
+      return;
+    }
+    if (msg.type === 'busy') {
+      panel.setBusy(msg.busy);
       return;
     }
     if (msg.type === 'foliage') {
@@ -163,30 +190,24 @@ async function main(): Promise<void> {
       panel.updateFoliage(msg.phase, msg.leaves.count);
       return;
     }
-    if (showSkeleton) {
-      const previous = skeleton.object;
-      const replaced = skeleton.update(msg.snapshot);
-      if (replaced) {
-        treeRoot.remove(previous);
-        previous.dispose();
-        treeRoot.add(replaced);
-      }
-    } else {
-      bark.update(msg.snapshot.bark);
-      rig.load(msg.snapshot.bark.rig);
-      rig.deform();
-      bark.applyRig(rig);
-      foliage.applyRig(rig);
+    const previous = skeleton.object;
+    const replaced = skeleton.update(msg.snapshot);
+    if (replaced && showSkeleton) {
+      treeRoot.remove(previous);
+      previous.dispose();
+      treeRoot.add(replaced);
     }
+    bark.update(msg.snapshot.bark);
+    rig.load(msg.snapshot.bark.rig);
+    rig.deform();
+    bark.applyRig(rig);
+    foliage.applyRig(rig);
+    lightMap.update(msg.snapshot.budLight);
     latest = msg.snapshot;
     foliage.update(msg.snapshot, performance.now() / 1000);
     panel.update(msg.snapshot);
     stage.setSeason(msg.snapshot.foliagePhase);
   };
-
-  // Atajo de depuración: `?years=N` avanza N años al arrancar.
-  const years = Number(params.get('years'));
-  if (years > 0) send({ type: 'advance', years });
 
   const fps = new FpsCounter();
   renderer.setAnimationLoop((time) => {

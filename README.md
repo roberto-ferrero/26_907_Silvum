@@ -32,13 +32,14 @@ Parámetros de URL útiles para depurar:
 | `?species=quercus-robur`     | Especie inicial (`abies-alba`, `quercus-robur`, `prunus-dulcis`)                                                      |
 | `?archetype=conical-conifer` | Arquetipo sin especie (`broad-crown-broadleaf`, `conical-conifer`, `parasol-pine`, `columnar-tree`, `pendulous-tree`) |
 | `?seed=42`                   | Semilla inicial                                                                                                       |
-| `?years=20`                  | Avanza N años al arrancar (admite fracciones: `20.8` es finales de octubre)                                           |
+| `?years=20`                  | Año inicial, por defecto 25 (admite fracciones: `20.8` es finales de octubre)                                         |
 | `?wind=0.6`                  | Intensidad inicial del viento (0-1)                                                                                   |
 | `?skeleton=1`                | Vista de diagnóstico con un cilindro por entrenudo en lugar de la corteza continua                                    |
 | `?leafSeconds=20`            | Segundos reales por año del ciclo de hojas independiente                                                              |
 | `?leafCycle=coupled`         | Ciclo de hojas ligado al crecimiento                                                                                  |
 | `?haze=0.4`                  | Bruma inicial de la atmósfera (0-1)                                                                                   |
 | `?post=0`                    | Sin postprocesado (oclusión ambiental y FXAA)                                                                         |
+| `?leafPlay=1`                | Arranca con las estaciones de las hojas en marcha (por defecto, en pausa y en primavera)                              |
 
 ## Estructura
 

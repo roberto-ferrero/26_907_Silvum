@@ -45,7 +45,6 @@ import {
   initiateFlowers,
   leafOccluders,
   onAxesDied,
-  pruneFlowers,
   refreshLeafCohorts,
   removeOrphanOrgans,
   updateFlowers,
@@ -89,7 +88,7 @@ const MAX_SAG_MEMORY_RAD = 0.2;
 /** Holgura sobre el sustrato por debajo de la cual un entrenudo no puede bajar (m). */
 const SOIL_CLEARANCE_M = 0.015;
 
-export const MODEL_VERSION = 'silvum-core-0.3.0';
+export const MODEL_VERSION = 'silvum-core-0.4.0';
 
 /** Constantes de ingeniería del motor (no son parámetros de especie). */
 const ENGINE = Object.freeze({
@@ -297,6 +296,7 @@ export class TreeSimulation {
     const light = this.light;
     // Con la luz ya fijada: cohortes vacías fuera, perennes con su nueva luz.
     refreshLeafCohorts(this.organs);
+    compactState(s, year);
     flushShortShoots(this.organs, year, s.timeYears);
 
     const budsBySegment = new Map<number | null, Bud[]>();
@@ -1291,6 +1291,26 @@ function shedAxis(
     carrier.childSegmentIds = carrier.childSegmentIds.filter((c) => s.segments[c] !== undefined);
   }
   pushEvent(s, limits, { timeYears: t, kind: 'axis-shed', id: axisId });
+}
+
+/**
+ * Compactación anual en la brotación: fuera las yemas laterales muertas (ya no
+ * intervienen en nada) y las unidades de crecimiento terminadas de años anteriores. El
+ * estado ocupa la mitad y las instantáneas para rebobinar caben en memoria. No cambia
+ * ninguna decisión del motor.
+ */
+function compactState(s: TreeState, year: number): void {
+  for (const bud of Object.values(s.buds)) {
+    if (bud.state !== 'dead' || bud.kind !== 'lateral') continue;
+    if (s.axes[bud.axisId]?.terminalBudId === bud.id) continue;
+    delete s.buds[bud.id];
+  }
+  for (const gu of Object.values(s.growthUnits)) {
+    if (!gu.elongationComplete || gu.year >= year) continue;
+    delete s.growthUnits[gu.id];
+    const axis = s.axes[gu.axisId];
+    if (axis) axis.growthUnitIds = axis.growthUnitIds.filter((id) => id !== gu.id);
+  }
 }
 
 function pushEvent(s: TreeState, limits: TreeLimits, event: TreeEvent): void {

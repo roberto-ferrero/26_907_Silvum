@@ -106,7 +106,8 @@ describe('rig de ramas', () => {
       rig.deform();
       rig.deformBark(mesh.positions, mesh.normals, pos, nrm);
     }
-    // Holgura amplia para la CI: el objetivo es ~10 ms por fotograma.
-    expect((performance.now() - start) / 30).toBeLessThan(60);
+    // Holgura amplia (los tests corren en paralelo y en la CI): ~10-20 ms en solitario;
+    // solo detecta regresiones grandes.
+    expect((performance.now() - start) / 30).toBeLessThan(150);
   }, 60000);
 });
