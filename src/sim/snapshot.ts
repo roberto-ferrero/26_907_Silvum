@@ -13,7 +13,7 @@ import { popcount } from './organs.ts';
 import { phenophase } from './phenology.ts';
 import { flowerOpenness, flowerPose, fruitColor, fruitPose } from './reproduction.ts';
 import { getSpecies, type LeafForm } from './species.ts';
-import type { TreeState } from './types.ts';
+import { DEFAULT_LIMITS, type TreeState } from './types.ts';
 import type { WindSettings } from './wind.ts';
 
 /**
@@ -71,6 +71,8 @@ export interface RenderSnapshot {
   clockYears: number;
   /** Fase del año que muestra el follaje (la biológica o la del ciclo de hojas). */
   foliagePhase: number;
+  /** Fracción usada de la capacidad preasignada de entrenudos (fase 9.1). */
+  capacityUsed01: number;
   /** Últimos eventos del motor, legibles (panel de diagnóstico). */
   recentEvents: string[];
   /** Yemas vivas para el mapa de luz: x, y, z, exposición [0, 1] (4 floats). */
@@ -286,6 +288,7 @@ export function buildRenderSnapshot(
     clockYears: s.timeYears,
     foliagePhase: phase,
     recentEvents: recentEvents(s),
+    capacityUsed01: n / DEFAULT_LIMITS.maxSegments,
     budLight: budLight(s),
   };
 }

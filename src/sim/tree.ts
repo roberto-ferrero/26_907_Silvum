@@ -28,7 +28,7 @@ import {
   envelopeSignalFactor,
   type EnvelopeShape,
 } from './envelope.ts';
-import { DEFAULT_SHADOW, ShadowGrid, type LightField } from './light.ts';
+import { DEFAULT_SHADOW, ShadowGrid, type LightField, type ShadowGridParams } from './light.ts';
 import { axisMechanics, staticBend } from './mechanics.ts';
 import {
   activationBias,
@@ -114,7 +114,12 @@ export interface SimulationOptions {
   archetypeId?: string;
   seed: number;
   limits?: TreeLimits;
+  /** Modificador del campo de luz (pruebas de comportamiento; control de luz futuro, 3.4). */
+  lightModifier?: LightModifier;
 }
+
+/** Transforma el campo de luz del motor (p. ej. luz lateral o sombra impuesta). */
+export type LightModifier = (base: LightField) => LightField;
 
 /** Resuelve el id de especie a partir de las opciones (`speciesId` tiene prioridad). */
 export function resolveSpeciesId(options: { speciesId?: string; archetypeId?: string }): string {
@@ -147,7 +152,13 @@ export class TreeSimulation {
   private detachedCount = 0;
   private readonly organs: OrganContext;
 
-  constructor(options: SimulationOptions | { state: TreeState; limits?: TreeLimits }) {
+  private readonly lightModifier: LightModifier | null;
+
+  constructor(
+    options:
+      | SimulationOptions
+      | { state: TreeState; limits?: TreeLimits; lightModifier?: LightModifier },
+  ) {
     if ('state' in options) {
       this.state = options.state;
     } else {
@@ -160,6 +171,7 @@ export class TreeSimulation {
     };
     this.calendar = this.species.phenology;
     this.limits = options.limits ?? DEFAULT_LIMITS;
+    this.lightModifier = options.lightModifier ?? null;
     const state = (): TreeState => this.state;
     this.organs = {
       get state() {
@@ -278,9 +290,14 @@ export class TreeSimulation {
     };
   }
 
+  private modifiedLight(): LightField {
+    const base = buildLightField(this.state);
+    return this.lightModifier ? this.lightModifier(base) : base;
+  }
+
   private lightField(): LightField {
     if (!this.light || this.lightRevision < 0) {
-      this.light = buildLightField(this.state);
+      this.light = this.modifiedLight();
       this.lightRevision = this.state.stateRevision;
     }
     return this.light;
@@ -291,7 +308,7 @@ export class TreeSimulation {
     const s = this.state;
     const { scale: sc } = this.archetype;
     // Luz evaluada sobre el estado previo; las sombras de órganos nuevos afectan al año siguiente.
-    this.light = buildLightField(s);
+    this.light = this.modifiedLight();
     this.lightRevision = s.stateRevision;
     const light = this.light;
     // Con la luz ya fijada: cohortes vacías fuera, perennes con su nueva luz.
@@ -1191,19 +1208,25 @@ function budPosition(s: TreeState, bud: Bud): Vec3 {
  * caducas, el follaje de la temporada anterior cuenta durante la brotación (la copa que
  * sombreó el año previo), para no tratar el árbol desnudo de invierno como luz plena.
  */
-export function buildLightField(s: TreeState): LightField {
+export function buildLightField(s: TreeState, params: Partial<ShadowGridParams> = {}): LightField {
+  const species = getSpecies(s.speciesId);
+  return new ShadowGrid(lightOccluders(s), {
+    ...DEFAULT_SHADOW,
+    lateralWeight: species.architecture.lateralSkyWeight,
+    ...params,
+  });
+}
+
+/** Órganos que sombrean: yemas vivas (peso 1) y hojas. */
+export function lightOccluders(s: TreeState): { position: Vec3; weight: number }[] {
   const occluders: { position: Vec3; weight: number }[] = [];
   for (const bud of Object.values(s.buds)) {
     if (bud.state === 'dead') continue;
     if (s.axes[bud.axisId]?.woodState !== 'living') continue;
     occluders.push({ position: budPosition(s, bud), weight: 1 });
   }
-  const species = getSpecies(s.speciesId);
-  leafOccluders(s, species, occluders);
-  return new ShadowGrid(occluders, {
-    ...DEFAULT_SHADOW,
-    lateralWeight: species.architecture.lateralSkyWeight,
-  });
+  leafOccluders(s, getSpecies(s.speciesId), occluders);
+  return occluders;
 }
 
 /** Recalcula posiciones de referencia desde la raíz (ids ascendentes). */

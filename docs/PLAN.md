@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1, 2 y 4 completadas; fases 5, 6 y 7 casi completas (pendientes 5.8, 6.1, 6.4, vigor en 7.6 y luz en 7.4); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
+- Estado: fases 0, 1, 2 y 4 completadas; fases 5, 6, 7 y 9 casi completas (pendientes 5.8, 6.1, 6.4, vigor en 7.6, luz en 7.4 y dt en 9.3); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -170,10 +170,17 @@ Notas de la fase 7:
 
 ## Fase 9. Rendimiento y calidad
 
-- [ ] 9.1 Presupuestos de capacidad preasignados con pausa legible al alcanzarlos
-- [ ] 9.2 Medición de FPS y coste por tick en hardware de referencia
-- [ ] 9.3 Pruebas de convergencia (dt frente a dt/2, resolución de rejilla)
-- [ ] 9.4 Pruebas de comportamiento: luz lateral, quitar ápice, sombra prolongada, misma semilla
+- [x] 9.1 Presupuestos de capacidad preasignados con pausa legible al alcanzarlos
+- [x] 9.2 Medición de FPS y coste por tick en hardware de referencia
+- [~] 9.3 Pruebas de convergencia (dt frente a dt/2, resolución de rejilla)
+- [x] 9.4 Pruebas de comportamiento: luz lateral, quitar ápice, sombra prolongada, misma semilla
+
+Notas de la fase 9:
+
+- 9.1: límites preasignados (`DEFAULT_LIMITS`); al llegar al de entrenudos el crecimiento se pausa y el panel lo dice; el estado muestra el porcentaje de capacidad usada.
+- 9.2: el Worker mide el coste por tick y por publicación (panel, sección Estado) y publica de forma adaptativa (no más a menudo que el doble de lo que cuesta una instantánea). `npm run bench` imprime una tabla por especie (30 años: tiempo total, ms/tick, instantánea y corteza). Referencia en el equipo de desarrollo (1 nov 2026): roble 3,6 s y 12,5 ms/tick; abeto 8,8 s y 17,5 ms/tick; almendro 5,0 s y 7,6 ms/tick; instantánea 70-230 ms.
+- 9.3: convergencia de la rejilla de luz (celda y media celda: correlación de exposiciones > 0,7). Pendiente: dt frente a dt/2, porque el paso semanal es una constante del motor.
+- 9.4: `tests/behavior.test.ts` con un modificador de luz del motor (`lightModifier`): luz lateral, sombra prolongada, quitar el ápice; la misma semilla ya estaba cubierta.
 
 ## Fase 10. Ampliaciones futuras
 

@@ -30,6 +30,8 @@ export type FromWorker =
     }
   /** Años de la línea de tiempo ya precalculados (saltos rápidos). */
   | { type: 'cache'; years: number }
+  /** Coste medido en el Worker (ms): por tick biológico y por publicación. */
+  | { type: 'perf'; tickMs: number; publishMs: number }
   /** El Worker está calculando un salto (la vista puede mostrarlo). */
   | { type: 'busy'; busy: boolean }
   | { type: 'error'; message: string };

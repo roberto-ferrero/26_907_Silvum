@@ -174,6 +174,10 @@ async function main(): Promise<void> {
       panel.updateCache(msg.years);
       return;
     }
+    if (msg.type === 'perf') {
+      panel.updatePerf(msg.tickMs, msg.publishMs);
+      return;
+    }
     if (msg.type === 'busy') {
       panel.setBusy(msg.busy);
       return;

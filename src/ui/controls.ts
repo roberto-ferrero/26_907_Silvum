@@ -299,6 +299,13 @@ export class ControlPanel {
     if (this.lastSnapshot) this.update(this.lastSnapshot);
   }
 
+  private perfLine = '';
+
+  /** Coste medido en el Worker (fase 9.2). */
+  updatePerf(tickMs: number, publishMs: number): void {
+    this.perfLine = `Coste: ${tickMs.toFixed(2)} ms/tick · ${publishMs.toFixed(0)} ms/publicación`;
+  }
+
   /** El Worker está calculando un salto. */
   setBusy(busy: boolean): void {
     this.yearLabel.classList.toggle('busy', busy);
@@ -312,6 +319,8 @@ export class ControlPanel {
 
   update(s: RenderSnapshot): void {
     this.lastSnapshot = s;
+    if (!this.coupled())
+      this.foliageLine = `Hojas: ${seasonName(s.foliagePhase)} · ${s.leaves.count} visibles`;
     const year = Math.floor(s.timeYears + 1e-6);
     if (!this.seeking) {
       this.timeline.value = String(s.timeYears);
@@ -324,10 +333,12 @@ export class ControlPanel {
     this.info.textContent =
       `${s.speciesName} · año ${year} · ${s.season} · ${s.phenophase}\n` +
       `etapa ${(s.developmentalStage01 * 100).toFixed(0)} % · ${s.leaves.count} hojas\n` +
-      `${s.segmentCount} entrenudos · ${s.livingAxes} ejes vivos · ${s.deadAxes} muertos` +
+      `${s.segmentCount} entrenudos (capacidad ${(s.capacityUsed01 * 100).toFixed(0)} %) · ` +
+      `${s.livingAxes} ejes vivos · ${s.deadAxes} muertos` +
       reproduction +
       (s.capacityReached ? '\nCapacidad alcanzada: crecimiento pausado' : '') +
-      (this.coupled() || !this.foliageLine ? '' : `\n${this.foliageLine}`);
+      (this.coupled() || !this.foliageLine ? '' : `\n${this.foliageLine}`) +
+      (this.perfLine ? `\n${this.perfLine}` : '');
     this.events.textContent = s.recentEvents.join('\n');
   }
 }

@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bench": "vitest run tests/bench.test.ts --mode bench --silent=false --reporter=verbose"
   },
   "dependencies": {
     "three": "0.186.1"

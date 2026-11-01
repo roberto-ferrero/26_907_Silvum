@@ -128,8 +128,22 @@ function post(message: FromWorker, transfer: Transferable[] = []): void {
   self.postMessage(message, transfer);
 }
 
+/** Coste medio (media móvil exponencial, ms) por tick y por publicación (fase 9.2). */
+const perf = { tickMs: 0, publishMs: 0, lastReport: 0 };
+const ema = (old: number, value: number): number => (old === 0 ? value : old * 0.9 + value * 0.1);
+
+function measureTicks(ms: number, ticks: number): void {
+  if (ticks > 0) perf.tickMs = ema(perf.tickMs, ms / ticks);
+  const now = performance.now();
+  if (now - perf.lastReport > 1000) {
+    perf.lastReport = now;
+    post({ type: 'perf', tickMs: perf.tickMs, publishMs: perf.publishMs });
+  }
+}
+
 function publish(): void {
   if (!sim) return;
+  const publishStart = performance.now();
   const built = buildRenderSnapshot(sim.state, visualDetachments(sim.drainDetachments()));
   const cycle = cycleLeaves(leafClock.phase);
   const snapshot = cycle
@@ -177,6 +191,7 @@ function publish(): void {
       bark.indices.buffer,
     ],
   );
+  perf.publishMs = ema(perf.publishMs, performance.now() - publishStart);
 }
 
 function runBatch(): void {
@@ -190,10 +205,19 @@ function runBatch(): void {
     pendingTicks -= 1;
     stepped++;
   }
+  measureTicks(performance.now() - start, stepped);
   // Si el cálculo no da abasto, no se acumula retraso infinito.
   pendingTicks = Math.min(pendingTicks, 4);
-  if (stepped > 0) publish();
+  // Publicación adaptativa: con árboles grandes una instantánea cuesta ~100 ms, así que
+  // no se publica más a menudo que el doble de lo que cuesta (el crecimiento no espera).
+  const now = performance.now();
+  if (stepped > 0 && now - lastPublish >= Math.max(FRAME_MS, 2 * perf.publishMs)) {
+    lastPublish = now;
+    publish();
+  }
 }
+
+let lastPublish = 0;
 
 function setPlaying(rate: number): void {
   yearsPerSecond = Math.max(0, rate);
@@ -222,10 +246,12 @@ async function seek(years: number): Promise<void> {
       sim = new TreeSimulation({ state: await timeline.restore(checkpoint) });
     }
     const ticks = Math.round((target - sim.state.timeYears) / DT_YEARS);
+    const stepStart = performance.now();
     for (let i = 0; i < ticks; i++) {
       sim.step();
       timeline.record(sim.state);
     }
+    measureTicks(performance.now() - stepStart, ticks);
     sim.drainDetachments();
     publish();
   } finally {

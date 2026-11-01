@@ -23,6 +23,7 @@ El plan por fases y su estado están en [docs/PLAN.md](docs/PLAN.md).
 | `npm run typecheck` | Comprobación de tipos estricta                 |
 | `npm run lint`      | ESLint                                         |
 | `npm run format`    | Formatea con Prettier                          |
+| `npm run bench`     | Banco de rendimiento por especie               |
 
 Parámetros de URL útiles para depurar:
 
