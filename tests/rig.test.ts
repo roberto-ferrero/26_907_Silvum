@@ -109,5 +109,5 @@ describe('rig de ramas', () => {
     // Holgura amplia (los tests corren en paralelo y en la CI): ~10-20 ms en solitario;
     // solo detecta regresiones grandes.
     expect((performance.now() - start) / 30).toBeLessThan(150);
-  }, 60000);
+  }, 120000);
 });

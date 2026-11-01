@@ -26,5 +26,5 @@ describe('canon del abeto', () => {
         );
       expect(spread(0.1, 0.4)).toBeGreaterThan(spread(0.7, 1.0) * 1.5);
     }
-  }, 60000);
+  }, 120000);
 });

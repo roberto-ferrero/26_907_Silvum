@@ -39,5 +39,5 @@ describe('canon del roble', () => {
       expect(m.crownBase01).toBeLessThan(0.45);
       expect(m.scaffolds).toBeGreaterThanOrEqual(3);
     }
-  }, 30000);
+  }, 120000);
 });

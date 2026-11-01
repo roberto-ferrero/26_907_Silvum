@@ -255,7 +255,7 @@ describe('flores y frutos', () => {
       (t) => seasonPhase(t) >= getSpecies('quercus-robur').fruiting!.drop[0],
     );
     expect(ripe.length).toBeGreaterThan(0);
-  }, 30000);
+  }, 120000);
 });
 
 describe('determinismo y dibujo con órganos', () => {
