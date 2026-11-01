@@ -135,7 +135,7 @@ Notas de la fase 5:
 
 - [~] 6.1 Tubos con transporte paralelo, subdivisión por curvatura y distancia (hecho el tubo continuo por eje con ensanchamiento basal; falta la subdivisión)
 - [ ] 6.2 Uniones de ramas sin costuras visibles (parches o mezcla local)
-- [ ] 6.3 Material de corteza PBR con madurez de corteza por edad
+- [x] 6.3 Material de corteza PBR con madurez de corteza por edad (procedimental: grietas Worley, veteado y relieve; sin texturas)
 - [ ] 6.4 Hojas instanciadas por cohortes con LOD que preserve el área; agujas para coníferas
 - [ ] 6.5 Maceta de bonsái, sustrato y nebari (raíces superficiales visuales)
 - [x] 6.6 Iluminación por estación y hora; sombras

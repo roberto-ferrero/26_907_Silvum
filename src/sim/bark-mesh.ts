@@ -15,6 +15,12 @@ export interface BarkMesh {
   normals: Float32Array;
   /** Color lineal por vértice. */
   colors: Float32Array;
+  /**
+   * Coordenadas de corteza en metros (u alrededor, v a lo largo del eje) y madurez de la
+   * corteza [0, 1] (lisa en ramillas, agrietada en el tronco viejo), para el material (6.3).
+   */
+  barkUv: Float32Array;
+  barkAge: Float32Array;
   indices: Uint32Array;
   /** Esqueleto para el rig de presentación (fase 5). */
   rig: RigData;
@@ -53,8 +59,8 @@ const hex = (h: number): [number, number, number] => [
   srgb((h & 255) / 255),
 ];
 /** Corteza vieja (gris pardo agrietado), ramilla joven (parda rojiza) y madera muerta. */
-const OLD_BARK = hex(0x5b4d42);
-const YOUNG_BARK = hex(0x7a5c45);
+const OLD_BARK = hex(0x857a6e);
+const YOUNG_BARK = hex(0x8c6d52);
 const DEAD_WOOD = hex(0x8f8a80);
 
 /** Altura (m) y exceso de radio del ensanchamiento basal del tronco. */
@@ -106,6 +112,8 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
   const colors = new Float32Array(vertexCount * 3);
+  const barkUv = new Float32Array(vertexCount * 2);
+  const barkAge = new Float32Array(vertexCount);
   const indices = new Uint32Array(indexCount);
 
   let v = 0;
@@ -131,6 +139,8 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
     rig.axisCom.set(com, a * 3);
     let frame = segs[0]!.frameU;
     let tangent = segs[0]!.direction;
+    // Arco recorrido a lo largo del eje (coordenada v de la corteza).
+    let arc = 0;
     for (let r = 0; r <= segs.length; r++) {
       const seg = segs[Math.min(r, segs.length - 1)]!;
       const next = segs[r];
@@ -144,6 +154,9 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       frame = transportNormal(frame, tangent, t);
       tangent = t;
       const center = r === segs.length ? seg.end : seg.start;
+      if (r > 0) arc += segs[r - 1]!.lengthM;
+      // Madurez de la corteza: se agrieta con el grosor (y por tanto con la edad).
+      const maturity = Math.max(0, Math.min(1, (seg.radiusM - 0.003) / 0.02));
       rig.nodeRest.set(center, node * 3);
       rig.nodeSegment[node] = r === 0 ? -1 : segIds[r - 1]!;
       if (r > 0) endNode.set(segIds[r - 1]!, node);
@@ -185,6 +198,9 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
         colors[o + 1] = c[1] * grain;
         colors[o + 2] = c[2] * grain;
         rig.vertexNode[v] = node;
+        barkUv[v * 2] = (j / sides) * 2 * Math.PI * Math.max(radius, 0.002);
+        barkUv[v * 2 + 1] = arc;
+        barkAge[v] = dead ? 0.3 : maturity;
         v++;
       }
       node++;
@@ -203,5 +219,5 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       }
     }
   }
-  return { positions, normals, colors, indices, rig };
+  return { positions, normals, colors, barkUv, barkAge, indices, rig };
 }

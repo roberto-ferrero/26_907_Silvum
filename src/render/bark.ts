@@ -1,4 +1,15 @@
 import * as THREE from 'three/webgpu';
+import {
+  attribute,
+  bumpMap,
+  float,
+  mix,
+  mx_fractal_noise_float,
+  mx_worley_noise_float,
+  smoothstep,
+  vec3,
+  vertexColor,
+} from 'three/tsl';
 import type { BranchRig } from '../fx/rig.ts';
 import type { BarkMesh } from '../sim/bark-mesh.ts';
 
@@ -8,11 +19,27 @@ import type { BarkMesh } from '../sim/bark-mesh.ts';
  */
 export class BarkView {
   readonly object: THREE.Mesh;
-  private readonly material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.92,
-    metalness: 0,
-  });
+  private readonly material = BarkView.createMaterial();
+
+  /**
+   * Corteza procedimental (6.3): grietas verticales (Worley estirado a lo largo del eje)
+   * que se abren con la madurez, veteado fino con ruido fractal, color más oscuro en el
+   * fondo de las grietas y relieve por mapa de alturas. Sin texturas que cargar.
+   */
+  private static createMaterial(): THREE.MeshStandardNodeMaterial {
+    const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.93, metalness: 0 });
+    const uv = attribute<'vec2'>('barkUv', 'vec2');
+    const age = attribute<'float'>('barkAge', 'float');
+    const cracks = mx_worley_noise_float(vec3(uv.x.mul(55), uv.y.mul(14), float(0)));
+    const grain = mx_fractal_noise_float(vec3(uv.x.mul(160), uv.y.mul(40), float(3)), 3);
+    const ridge = smoothstep(0.05, 0.45, cracks); // 0 en la grieta, 1 en la placa
+    const height = mix(float(1), ridge, age).add(grain.mul(0.08));
+    m.colorNode = vertexColor()
+      .mul(mix(float(1), ridge.mul(0.5).add(0.55), age))
+      .mul(grain.mul(0.12).add(1));
+    m.normalNode = bumpMap(height, float(0.6));
+    return m;
+  }
 
   constructor() {
     // Geometría inicial con todos los atributos: el backend compila el pipeline con ellos.
@@ -31,6 +58,8 @@ export class BarkView {
       new THREE.BufferAttribute(new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0]), 3),
     );
     g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(9), 3));
+    g.setAttribute('barkUv', new THREE.BufferAttribute(new Float32Array(6), 2));
+    g.setAttribute('barkAge', new THREE.BufferAttribute(new Float32Array(3), 1));
     g.setIndex(new THREE.BufferAttribute(new Uint32Array([0, 1, 2]), 1));
     return g;
   }
@@ -46,6 +75,8 @@ export class BarkView {
     g.setAttribute('position', new THREE.BufferAttribute(mesh.positions.slice(), 3));
     g.setAttribute('normal', new THREE.BufferAttribute(mesh.normals.slice(), 3));
     g.setAttribute('color', new THREE.BufferAttribute(mesh.colors, 3));
+    g.setAttribute('barkUv', new THREE.BufferAttribute(mesh.barkUv, 2));
+    g.setAttribute('barkAge', new THREE.BufferAttribute(mesh.barkAge, 1));
     g.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
     g.computeBoundingSphere();
     const old = this.object.geometry;

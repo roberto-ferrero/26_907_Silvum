@@ -16,6 +16,8 @@ describe('malla de corteza', () => {
     expect(mesh.indices.length % 3).toBe(0);
     expect(mesh.positions.every(Number.isFinite)).toBe(true);
     expect(mesh.indices.every((i) => i < vertices)).toBe(true);
+    expect(mesh.barkUv.length).toBe(vertices * 2);
+    expect(mesh.barkAge.every((a) => a >= 0 && a <= 1)).toBe(true);
   });
 
   it('las caras frontales miran hacia fuera del tubo', () => {

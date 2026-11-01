@@ -135,6 +135,8 @@ function publish(): void {
       bark.positions.buffer,
       bark.normals.buffer,
       bark.colors.buffer,
+      bark.barkUv.buffer,
+      bark.barkAge.buffer,
       bark.indices.buffer,
     ],
   );
