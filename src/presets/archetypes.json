@@ -1,0 +1,1265 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "illustrative-not-calibrated",
+  "title": "Programas morfológicos iniciales para crecimiento de árboles",
+  "units": {
+    "developmentalStage": "adimensional [0,1]; no equivale a años",
+    "angleAtBirthDeg": "grados entre tangente del eje portador y eje nuevo en el nacimiento",
+    "targetInclinationDeg": "grados respecto a la vertical ascendente: 0 arriba, 90 horizontal, 180 abajo",
+    "apicalControlLambda": "peso relativo adimensional de continuación principal; heurística artística 0.46–0.54",
+    "branchingIntensity": "factor adimensional [0,1] sobre yemas elegibles, no probabilidad por frame",
+    "persistence": "factor adimensional [0,1] de retención bajo déficit; mayor implica más persistencia",
+    "stiffnessYoungPa": "Pa; null significa desconocido, no cero",
+    "maximumShootLengthM": "m por unidad de crecimiento; null requiere calibración/escala explícita",
+    "tropismWeights": "pesos relativos adimensionales; no necesitan sumar uno y no son tasas temporales",
+    "radiusPipeExponent": "exponente adimensional de una aproximación de radios",
+    "activationBiasKnots": "pares [posición local en unidad de crecimiento, peso relativo]",
+    "illustrativeCohortAzimuthDeg": "grados alrededor del eje para aproximación visual de una cohorte"
+  },
+  "coordinateConvention": {
+    "up": [0, 1, 0],
+    "stageKeyframes": [0, 0.5, 1],
+    "azimuth": "medido en un marco local transportado a lo largo del eje",
+    "roleNames": ["trunk", "scaffold", "branch", "twig"],
+    "branchOrderIsSeparateFromRole": true
+  },
+  "assumptions": [
+    "Todos los números geométricos, pesos, intensidades y persistencias son ejemplos de arranque elegidos para programación; no son datos publicados.",
+    "Interpolar controles para crecimiento futuro. No reasignar retrospectivamente posiciones, longitudes o radios de la madera formada.",
+    "No se han elegido duraciones en años, dimensiones absolutas, módulo elástico ni velocidades de crecimiento.",
+    "La formación de yemas, su reposo y activación y los eventos de mortalidad se evalúan en tiempo biológico, independientemente del frame de render.",
+    "Una categoría de eje puede reaparecer por reiteración en órdenes topológicos altos.",
+    "radiusPipeExponent=2 es una aproximación de inicialización; conservación exacta de área no es ley universal.",
+    "phyllotaxis.divergenceDeg=null debe resolverse antes de crear yemas con un modo espiral; nunca sustituir silenciosamente null por cero ni por un ángulo universal."
+  ],
+  "morphotypes": [
+    {
+      "id": "conical-conifer",
+      "name": "Conífera cónica",
+      "status": "illustrative-not-calibrated",
+      "speciesHint": {
+        "taxon": "Picea abies",
+        "interpretation": "Inspiración visual; no identificación ni calibración de una especie."
+      },
+      "description": "Líder persistente y ramas subordinadas en cohortes; expansión por crecimiento nuevo y supervivencia dependiente del entorno.",
+      "radiusPipeExponent": 2.0,
+      "phyllotaxis": {
+        "mode": "spiral",
+        "divergenceDeg": null,
+        "note": "Patrón foliar orientativo; el ángulo de divergencia debe medirse o elegirse explícitamente. No se presupone el ángulo áureo ni se activa una rama por cada hoja."
+      },
+      "branchingZone": {
+        "mode": "distal-cohorts",
+        "positionCoordinate": "0=base y 1=extremo de cada unidad de crecimiento, no altura del árbol",
+        "activationBiasKnots": [
+          [0, 0.05],
+          [0.55, 0.1],
+          [0.8, 0.45],
+          [1, 1]
+        ],
+        "illustrativeCohortAzimuthDeg": [0, 72, 144, 216, 288],
+        "note": "Los pesos son relativos y deben normalizarse al evaluar yemas elegibles. Las coronas aparentes de ramas no definen la filotaxis foliar."
+      },
+      "roles": {
+        "trunk": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.7,
+              "apicalControlLambda": 0.54,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.15,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.7,
+              "apicalControlLambda": 0.54,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.15,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.54,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.15,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "scaffold": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 60,
+              "targetInclinationDeg": 75,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.86,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 65,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.45,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.8,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "branch": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 70,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.78,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.45,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.72,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 85,
+              "branchingIntensity": 0.35,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.65,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "twig": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.15,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.65,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 75,
+              "branchingIntensity": 0.12,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.55,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.08,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.45,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        }
+      },
+      "persistencePolicy": {
+        "liveAxes": "El escalar persistence ajusta la retención bajo déficit sostenido; no es una probabilidad por frame.",
+        "deadWood": "Conservar el esqueleto tras la muerte; la caída es otro evento.",
+        "dormantBuds": "Conservar yemas de reserva viables según el ciclo; activación, muerte y brotación son eventos distintos."
+      },
+      "pendulousDirectionSelection": null,
+      "provenance": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2802949/",
+          "evidenceScope": "Categorías de ejes, unidades de crecimiento, ramificación, reiteración y fase de desarrollo; no origina los valores numéricos de este preset."
+        },
+        {
+          "url": "https://bioresources.cnr.ncsu.edu/resources/crown-architecture-and-structural-development-of-young-norway-spruce-trees-picea-abies-karst-a-basis-for-more-realistic-growth-modelling/",
+          "evidenceScope": "Fabrika et al. 2019: arquitectura y ángulos en árboles jóvenes de un rodal denso; no valida estos números ni la especie en todos los ambientes."
+        }
+      ],
+      "caveats": [
+        "La corona de cinco yemas es una aproximación visual, no una afirmación de filotaxis verticilada.",
+        "Los ángulos del estudio citado dependen de orden y condiciones. Aquí se han elegido valores artísticos.",
+        "La copa cónica debe resultar de jerarquía, extensión y edad de ejes; no recortar ramas contra un cono."
+      ]
+    },
+    {
+      "id": "broad-crown-broadleaf",
+      "name": "Frondosa de copa amplia",
+      "status": "illustrative-not-calibrated",
+      "speciesHint": {
+        "taxon": "Quercus robur / Quercus petraea",
+        "interpretation": "Inspiración visual; no identificación ni calibración de una especie."
+      },
+      "description": "Jerarquía flexible con ejes estructurales competidores; la fase madura favorece expansión y renovación lateral.",
+      "radiusPipeExponent": 2.0,
+      "phyllotaxis": {
+        "mode": "spiral",
+        "divergenceDeg": null,
+        "note": "Patrón foliar orientativo; el ángulo de divergencia debe medirse o elegirse explícitamente. No se presupone el ángulo áureo ni se activa una rama por cada hoja."
+      },
+      "branchingZone": {
+        "mode": "distal-biased",
+        "positionCoordinate": "0=base y 1=extremo de cada unidad de crecimiento, no altura del árbol",
+        "activationBiasKnots": [
+          [0, 0.1],
+          [0.4, 0.2],
+          [0.75, 0.65],
+          [1, 1]
+        ],
+        "illustrativeCohortAzimuthDeg": [],
+        "note": "Los pesos son relativos y deben normalizarse al evaluar yemas elegibles. Las coronas aparentes de ramas no definen la filotaxis foliar."
+      },
+      "roles": {
+        "trunk": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 5,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.95,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 8,
+              "branchingIntensity": 0.4,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "scaffold": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 40,
+              "targetInclinationDeg": 45,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.92,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.72,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 60,
+              "targetInclinationDeg": 75,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.85,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "branch": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 40,
+              "targetInclinationDeg": 55,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.82,
+              "tropismWeights": {
+                "light": 0.5,
+                "targetOrientation": 0.7,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 70,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.8,
+              "tropismWeights": {
+                "light": 0.5,
+                "targetOrientation": 0.7,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 60,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.7,
+              "tropismWeights": {
+                "light": 0.5,
+                "targetOrientation": 0.7,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "twig": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 40,
+              "targetInclinationDeg": 55,
+              "branchingIntensity": 0.22,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.65,
+              "tropismWeights": {
+                "light": 0.6,
+                "targetOrientation": 0.6,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.25,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.6,
+              "tropismWeights": {
+                "light": 0.6,
+                "targetOrientation": 0.6,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 75,
+              "branchingIntensity": 0.16,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.48,
+              "tropismWeights": {
+                "light": 0.6,
+                "targetOrientation": 0.6,
+                "headingPersistence": 0.9,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        }
+      },
+      "persistencePolicy": {
+        "liveAxes": "El escalar persistence ajusta la retención bajo déficit sostenido; no es una probabilidad por frame.",
+        "deadWood": "Conservar el esqueleto tras la muerte; la caída es otro evento.",
+        "dormantBuds": "Conservar yemas de reserva viables según el ciclo; activación, muerte y brotación son eventos distintos."
+      },
+      "pendulousDirectionSelection": null,
+      "provenance": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2802949/",
+          "evidenceScope": "Categorías de ejes, unidades de crecimiento, ramificación, reiteración y fase de desarrollo; no origina los valores numéricos de este preset."
+        },
+        {
+          "url": "https://academic.oup.com/forestry/article-abstract/73/4/331/629092",
+          "evidenceScope": "Estudio de destino de yemas y brotes en copas maduras de Quercus: influencia de edad, posición y pérdida de brotes; no calibración de este preset."
+        }
+      ],
+      "caveats": [
+        "Representa un arquetipo de frondosa, no una forma obligatoria de todo roble.",
+        "La sustitución de ápices y reiteración deben depender de reglas/eventos; no aumentar branchOrder para decidir automáticamente un rol.",
+        "Condiciones de bosque y crecimiento aislado requieren ajustes del entorno, no sólo de especie."
+      ]
+    },
+    {
+      "id": "parasol-pine",
+      "name": "Pino de copa parasol",
+      "status": "illustrative-not-calibrated",
+      "speciesHint": {
+        "taxon": "Pinus pinea",
+        "interpretation": "Inspiración visual; no identificación ni calibración de una especie."
+      },
+      "description": "Copa juvenil redondeada que se ensancha mediante ejes estructurales de vigor parecido; flexión y supervivencia modifican la copa adulta.",
+      "radiusPipeExponent": 2.0,
+      "phyllotaxis": {
+        "mode": "spiral",
+        "divergenceDeg": null,
+        "note": "Patrón foliar orientativo; el ángulo de divergencia debe medirse o elegirse explícitamente. No se presupone el ángulo áureo ni se activa una rama por cada hoja."
+      },
+      "branchingZone": {
+        "mode": "distal-cohorts",
+        "positionCoordinate": "0=base y 1=extremo de cada unidad de crecimiento, no altura del árbol",
+        "activationBiasKnots": [
+          [0, 0.05],
+          [0.65, 0.15],
+          [0.85, 0.65],
+          [1, 1]
+        ],
+        "illustrativeCohortAzimuthDeg": [0, 90, 180, 270],
+        "note": "Los pesos son relativos y deben normalizarse al evaluar yemas elegibles. Las coronas aparentes de ramas no definen la filotaxis foliar."
+      },
+      "roles": {
+        "trunk": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.505,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.95,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 5,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.95,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.95,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 10,
+              "branchingIntensity": 0.4,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.95,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "scaffold": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 35,
+              "targetInclinationDeg": 45,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.505,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.7,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.85,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "branch": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 40,
+              "targetInclinationDeg": 50,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.78,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.75,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 60,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.45,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.68,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "twig": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 35,
+              "targetInclinationDeg": 35,
+              "branchingIntensity": 0.12,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.65,
+              "tropismWeights": {
+                "light": 0.45,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 45,
+              "branchingIntensity": 0.15,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.6,
+              "tropismWeights": {
+                "light": 0.45,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 50,
+              "targetInclinationDeg": 55,
+              "branchingIntensity": 0.1,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.5,
+              "tropismWeights": {
+                "light": 0.45,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        }
+      },
+      "persistencePolicy": {
+        "liveAxes": "El escalar persistence ajusta la retención bajo déficit sostenido; no es una probabilidad por frame.",
+        "deadWood": "Conservar el esqueleto tras la muerte; la caída es otro evento.",
+        "dormantBuds": "Conservar yemas de reserva viables según el ciclo; activación, muerte y brotación son eventos distintos."
+      },
+      "pendulousDirectionSelection": null,
+      "provenance": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2802949/",
+          "evidenceScope": "Categorías de ejes, unidades de crecimiento, ramificación, reiteración y fase de desarrollo; no origina los valores numéricos de este preset."
+        },
+        {
+          "url": "https://researchportal.helsinki.fi/sv/publications/crown-architecture-of-grafted-stone-pine-pinus-pinea-l-shoot-grow/",
+          "evidenceScope": "Mutke et al. 2005, DOI 10.1007/s00468-004-0346-7: brotes en 27 pinos injertados; vigor poco diferenciado entre ápices del tronco y ramas principales y reiteración inmediata. Valores aquí no ajustados a esos datos."
+        }
+      ],
+      "caveats": [
+        "No interpretar Pinus pinea juvenil como un abeto cónico ni imponer un mini-parasol desde el inicio.",
+        "La pérdida de ramas bajas requiere déficit/senescencia persistente y caída posterior; no eliminar todo bajo una altura fija.",
+        "El estudio de referencia es de árboles injertados y no autoriza extrapolación universal.",
+        "La curva de fase cambia futuras unidades de crecimiento; no estira ni gira instantáneamente la madera anterior."
+      ]
+    },
+    {
+      "id": "columnar-tree",
+      "name": "Árbol columnar",
+      "status": "illustrative-not-calibrated",
+      "speciesHint": {
+        "taxon": "Populus nigra Italica",
+        "interpretation": "Inspiración visual; no identificación ni calibración de una especie."
+      },
+      "description": "Ramas laterales con preferencia de orientación erecta; copa estrecha generada por trayectorias de crecimiento.",
+      "radiusPipeExponent": 2.0,
+      "phyllotaxis": {
+        "mode": "spiral",
+        "divergenceDeg": null,
+        "note": "Patrón foliar orientativo; el ángulo de divergencia debe medirse o elegirse explícitamente. No se presupone el ángulo áureo ni se activa una rama por cada hoja."
+      },
+      "branchingZone": {
+        "mode": "diffuse-distal-biased",
+        "positionCoordinate": "0=base y 1=extremo de cada unidad de crecimiento, no altura del árbol",
+        "activationBiasKnots": [
+          [0, 0.25],
+          [0.4, 0.55],
+          [0.75, 0.8],
+          [1, 1]
+        ],
+        "illustrativeCohortAzimuthDeg": [],
+        "note": "Los pesos son relativos y deben normalizarse al evaluar yemas elegibles. Las coronas aparentes de ramas no definen la filotaxis foliar."
+      },
+      "roles": {
+        "trunk": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.53,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 1.35,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.53,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 1.35,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.95,
+              "tropismWeights": {
+                "light": 0.2,
+                "targetOrientation": 1.35,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "scaffold": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 15,
+              "targetInclinationDeg": 12,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.2,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 18,
+              "targetInclinationDeg": 18,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.2,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 22,
+              "targetInclinationDeg": 25,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.85,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.2,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "branch": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 20,
+              "targetInclinationDeg": 18,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.82,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 22,
+              "targetInclinationDeg": 22,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.78,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 25,
+              "targetInclinationDeg": 28,
+              "branchingIntensity": 0.4,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.7,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 1.1,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "twig": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 20,
+              "targetInclinationDeg": 20,
+              "branchingIntensity": 0.2,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.65,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 25,
+              "targetInclinationDeg": 25,
+              "branchingIntensity": 0.2,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.55,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 30,
+              "targetInclinationDeg": 30,
+              "branchingIntensity": 0.12,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.45,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.9,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        }
+      },
+      "persistencePolicy": {
+        "liveAxes": "El escalar persistence ajusta la retención bajo déficit sostenido; no es una probabilidad por frame.",
+        "deadWood": "Conservar el esqueleto tras la muerte; la caída es otro evento.",
+        "dormantBuds": "Conservar yemas de reserva viables según el ciclo; activación, muerte y brotación son eventos distintos."
+      },
+      "pendulousDirectionSelection": null,
+      "provenance": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2802949/",
+          "evidenceScope": "Categorías de ejes, unidades de crecimiento, ramificación, reiteración y fase de desarrollo; no origina los valores numéricos de este preset."
+        },
+        {
+          "url": "https://onlinelibrary.wiley.com/doi/10.1111/pbi.70415",
+          "evidenceScope": "Choi et al., online 2025 / volumen 2026: alteración de TAC1 y forma erecta en híbridos de Populus; evidencia de regulación de orientación, no valores de controles ni mecánica de este preset."
+        }
+      ],
+      "caveats": [
+        "La orientación columnar no se obtiene sólo elevando la dominancia del tronco; las laterales también necesitan comportamiento erecto.",
+        "No se modela expresión de genes; la genética sólo justifica independencia de preferencias de orientación.",
+        "Evitar colapsar geométricamente ramas distintas contra una envolvente estrecha."
+      ]
+    },
+    {
+      "id": "pendulous-tree",
+      "name": "Árbol de ramillas péndulas",
+      "status": "illustrative-not-calibrated",
+      "speciesHint": {
+        "taxon": "Formas lloronas de Salix",
+        "interpretation": "Inspiración visual; no identificación ni calibración de una especie."
+      },
+      "description": "Tronco y ramas de soporte ascendentes o abiertas; ramillas largas con selección de dirección y respuesta postural diferenciadas.",
+      "radiusPipeExponent": 2.0,
+      "phyllotaxis": {
+        "mode": "spiral",
+        "divergenceDeg": null,
+        "note": "Patrón foliar orientativo; el ángulo de divergencia debe medirse o elegirse explícitamente. No se presupone el ángulo áureo ni se activa una rama por cada hoja."
+      },
+      "branchingZone": {
+        "mode": "diffuse",
+        "positionCoordinate": "0=base y 1=extremo de cada unidad de crecimiento, no altura del árbol",
+        "activationBiasKnots": [
+          [0, 0.45],
+          [0.4, 0.65],
+          [0.75, 0.85],
+          [1, 1]
+        ],
+        "illustrativeCohortAzimuthDeg": [],
+        "note": "Los pesos son relativos y deben normalizarse al evaluar yemas elegibles. Las coronas aparentes de ramas no definen la filotaxis foliar."
+      },
+      "roles": {
+        "trunk": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.53,
+              "persistence": 0.98,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 0,
+              "branchingIntensity": 0.6,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.95,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 0,
+              "targetInclinationDeg": 5,
+              "branchingIntensity": 0.4,
+              "apicalControlLambda": 0.52,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.3,
+                "targetOrientation": 1.3,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "scaffold": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 50,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.51,
+              "persistence": 0.9,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 65,
+              "branchingIntensity": 0.7,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.88,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 65,
+              "targetInclinationDeg": 80,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.8,
+              "tropismWeights": {
+                "light": 0.4,
+                "targetOrientation": 0.8,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "branch": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 70,
+              "branchingIntensity": 0.55,
+              "apicalControlLambda": 0.5,
+              "persistence": 0.78,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 95,
+              "branchingIntensity": 0.65,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.72,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 65,
+              "targetInclinationDeg": 110,
+              "branchingIntensity": 0.5,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.62,
+              "tropismWeights": {
+                "light": 0.35,
+                "targetOrientation": 0.7,
+                "headingPersistence": 1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        },
+        "twig": {
+          "stiffnessYoungPa": null,
+          "maximumShootLengthM": null,
+          "keyframes": [
+            {
+              "developmentalStage": 0,
+              "angleAtBirthDeg": 45,
+              "targetInclinationDeg": 110,
+              "branchingIntensity": 0.22,
+              "apicalControlLambda": 0.49,
+              "persistence": 0.6,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.65,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 0.5,
+              "angleAtBirthDeg": 55,
+              "targetInclinationDeg": 130,
+              "branchingIntensity": 0.25,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.55,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.65,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            },
+            {
+              "developmentalStage": 1,
+              "angleAtBirthDeg": 65,
+              "targetInclinationDeg": 145,
+              "branchingIntensity": 0.18,
+              "apicalControlLambda": 0.48,
+              "persistence": 0.45,
+              "tropismWeights": {
+                "light": 0.25,
+                "targetOrientation": 0.65,
+                "headingPersistence": 1.1,
+                "spaceAvoidance": 0.15
+              }
+            }
+          ]
+        }
+      },
+      "persistencePolicy": {
+        "liveAxes": "El escalar persistence ajusta la retención bajo déficit sostenido; no es una probabilidad por frame.",
+        "deadWood": "Conservar el esqueleto tras la muerte; la caída es otro evento.",
+        "dormantBuds": "Conservar yemas de reserva viables según el ciclo; activación, muerte y brotación son eventos distintos."
+      },
+      "pendulousDirectionSelection": {
+        "mode": "role-specific-growth-preference",
+        "downwardRoles": ["branch", "twig"],
+        "applyTo": "dirección de crecimiento nuevo y objetivo de postura según el módulo elegido",
+        "elasticLoadBendingIsSeparate": true,
+        "reactionWoodActuationIsSeparate": true,
+        "doNotInferLowStiffnessFromWeepingHabit": true
+      },
+      "provenance": [
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2802949/",
+          "evidenceScope": "Categorías de ejes, unidades de crecimiento, ramificación, reiteración y fase de desarrollo; no origina los valores numéricos de este preset."
+        },
+        {
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29189719/",
+          "evidenceScope": "Transcriptional and Hormonal Regulation of Weeping Trait in Salix matsudana: estudio de regulación hormonal de formas contrastantes; no origen de los números del preset."
+        },
+        {
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11142379/",
+          "evidenceScope": "Kohler et al. 2024: mecanismo activo de orientación en melocotonero llorón; sirve para advertir que porte péndulo no implica siempre debilidad mecánica. No extrapolar idéntico mecanismo a Salix."
+        }
+      ],
+      "caveats": [
+        "Selección de dirección nueva, respuesta postural activa y flexión por cargas son mecanismos separados.",
+        "No se presupone madera blanda: stiffnessYoungPa queda sin calibrar.",
+        "La preferencia descendente sólo se aplica a roles distales, no al tronco entero.",
+        "Los valores mayores que 90 grados son controles visuales respecto a la vertical ascendente, no mediciones de sauce."
+      ]
+    }
+  ]
+}

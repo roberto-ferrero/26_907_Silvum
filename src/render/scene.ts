@@ -20,12 +20,12 @@ export function createStage(renderer: THREE.WebGPURenderer): StageHandle {
   scene.fog = new THREE.Fog(background, 3, 9);
 
   const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 60);
-  camera.position.set(1.4, 0.9, 1.9);
+  camera.position.set(1.9, 1.1, 2.5);
 
   const plantingPoint = new THREE.Vector3(0, soilTopY(DEFAULT_POT), 0);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0.35, 0);
+  controls.target.set(0, 0.55, 0);
   controls.enableDamping = true;
   controls.minDistance = 0.4;
   controls.maxDistance = 6;

@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0 y 1 completadas; siguiente, fase 2.
+- Estado: fases 0, 1 y 2 completadas; siguiente, fase 3.
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -56,24 +56,24 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 ## Fase 2. Núcleo de simulación (reescritura de tree-growth-foundation)
 
-- [ ] 2.1 Tipos y contratos revisados (ejes, unidades de crecimiento, nodos, entrenudos, yemas, cohortes de hojas)
-- [ ] 2.2 Aleatoriedad por evento con semilla (`eventHash`, `eventUniform`)
-- [ ] 2.3 Reparto Borchert-Honda y reparto ponderado conservativos
-- [ ] 2.4 Activación de yemas por hazard con umbral persistente por episodio
-- [ ] 2.5 Crédito fraccionario de crecimiento y conversión explícita a metros
-- [ ] 2.6 Orientación: nacimiento de laterales, inclinación objetivo, tropismos con límite de giro por longitud
-- [ ] 2.7 Engrosamiento monotónico con objetivo tipo pipe y demanda cambial terminal
-- [ ] 2.8 Reloj biológico fijo (1 semana por tick) separado del render
-- [ ] 2.9 Ciclo de tick completo: instantánea, señales puntas a base, reparto base a puntas, propuestas, confirmación
-- [ ] 2.10 Supervivencia por déficit sostenido; estados living / deadRetained / detached
-- [ ] 2.11 Ejecución en Worker con publicación de instantáneas de render
-- [ ] 2.12 Tests estructurales: sin ciclos, IDs estables, presupuesto conservado, radios no decrecientes, sin NaN, replay determinista
+- [x] 2.1 Tipos y contratos revisados (ejes, unidades de crecimiento, nodos, entrenudos, yemas, cohortes de hojas)
+- [x] 2.2 Aleatoriedad por evento con semilla (`eventHash`, `eventUniform`)
+- [x] 2.3 Reparto Borchert-Honda y reparto ponderado conservativos
+- [x] 2.4 Activación de yemas por hazard con umbral persistente por episodio
+- [x] 2.5 Crédito fraccionario de crecimiento y conversión explícita a metros
+- [x] 2.6 Orientación: nacimiento de laterales, inclinación objetivo, tropismos con límite de giro por longitud
+- [x] 2.7 Engrosamiento monotónico con objetivo tipo pipe y demanda cambial terminal
+- [x] 2.8 Reloj biológico fijo (1 semana por tick) separado del render
+- [x] 2.9 Ciclo de tick completo: instantánea, señales puntas a base, reparto base a puntas, propuestas, confirmación (luz provisional por propagación de sombra de Pałubicki; la definitiva es la fase 3)
+- [x] 2.10 Supervivencia por déficit sostenido; estados living / deadRetained / detached
+- [x] 2.11 Ejecución en Worker con publicación de instantáneas de render (vista provisional de esqueleto con cilindros y panel mínimo)
+- [x] 2.12 Tests estructurales: sin ciclos, IDs estables, presupuesto conservado, radios no decrecientes, sin NaN, replay determinista
 
 ## Fase 3. Luz y competencia
 
 - [ ] 3.1 Rejilla de densidad foliar (32³ / 64³) construida en Worker
 - [ ] 3.2 Muestreo de cielo y sol con atenuación exponencial (CPU de referencia)
-- [ ] 3.3 Señal de espacio libre separada de la de luz
+- [ ] 3.3 Señal de espacio libre separada de la de luz (incluye evitar la maceta y el suelo: hoy las ramas péndulas los atraviesan)
 - [ ] 3.4 Control de luz por el usuario (dirección e intensidad) como evento en el instante actual
 - [ ] 3.5 Kernel compute WebGPU (TSL) equivalente a la referencia CPU, con comparación de tolerancias
 
