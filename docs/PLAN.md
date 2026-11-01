@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fase 0 completada; fase 1 pendiente de arranque.
+- Estado: fases 0 y 1 completadas; siguiente, fase 2.
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -15,23 +15,23 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 ## Decisiones de alcance (1 nov 2026)
 
-| # | Tema | Decisión |
-|---|------|----------|
-| 1 | Paquete base | `tree-growth-foundation` como referencia; se rehace con mayor calidad |
-| 2 | Bonsái | Árbol libre; la maceta es solo diseño |
-| 3 | Prioridad | Visual rica sobre base científica |
-| 4 | Especies v1 | Abeto, roble y almendro |
-| 5 | Interacción | Tiempo, semilla, viento, luz, atmósfera, ratón sobre ramas. Sin alambrado |
-| 6 | Rango temporal | Semilla a 30-50 años simulados, velocidad ajustable |
-| 7 | Rebobinar | Sí, con instantáneas |
-| 8 | Nebari | Sí, solo visual |
-| 9 | Estilo | Realista suave |
-| 10 | Dispositivos | Escritorio con WebGPU; aviso si cae a WebGL 2 |
-| 11 | Build | Vite + TypeScript |
-| 12 | Entorno | Fondo neutro, luz por estación, viento desde el inicio; lluvia y nieve en el futuro |
-| 13 | Diagnóstico | Sí, panel ocultable |
-| — | Rigging | Rig de ramas con masa y rigidez: combadura por peso, mecimiento por viento, interacción con ratón |
-| — | Hojas | Formas y morfologías distintas por especie; caducas o perennes; caída visible ocasional, por viento (trayectoria coherente con él) y estacional; cambio de color no uniforme |
+| #   | Tema           | Decisión                                                                                                                                                                     |
+| --- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Paquete base   | `tree-growth-foundation` como referencia; se rehace con mayor calidad                                                                                                        |
+| 2   | Bonsái         | Árbol libre; la maceta es solo diseño                                                                                                                                        |
+| 3   | Prioridad      | Visual rica sobre base científica                                                                                                                                            |
+| 4   | Especies v1    | Abeto, roble y almendro                                                                                                                                                      |
+| 5   | Interacción    | Tiempo, semilla, viento, luz, atmósfera, ratón sobre ramas. Sin alambrado                                                                                                    |
+| 6   | Rango temporal | Semilla a 30-50 años simulados, velocidad ajustable                                                                                                                          |
+| 7   | Rebobinar      | Sí, con instantáneas                                                                                                                                                         |
+| 8   | Nebari         | Sí, solo visual                                                                                                                                                              |
+| 9   | Estilo         | Realista suave                                                                                                                                                               |
+| 10  | Dispositivos   | Escritorio con WebGPU; aviso si cae a WebGL 2                                                                                                                                |
+| 11  | Build          | Vite + TypeScript                                                                                                                                                            |
+| 12  | Entorno        | Fondo neutro, luz por estación, viento desde el inicio; lluvia y nieve en el futuro                                                                                          |
+| 13  | Diagnóstico    | Sí, panel ocultable                                                                                                                                                          |
+| —   | Rigging        | Rig de ramas con masa y rigidez: combadura por peso, mecimiento por viento, interacción con ratón                                                                            |
+| —   | Hojas          | Formas y morfologías distintas por especie; caducas o perennes; caída visible ocasional, por viento (trayectoria coherente con él) y estacional; cambio de color no uniforme |
 
 ---
 
@@ -47,12 +47,12 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 ## Fase 1. Infraestructura del proyecto
 
-- [ ] 1.1 Proyecto Vite + TypeScript estricto; scripts `dev`, `build`, `preview`, `test`, `typecheck`, `lint`
-- [ ] 1.2 three.js con versión fijada; `WebGPURenderer` y detección del backend efectivo (WebGPU o WebGL 2) con aviso
-- [ ] 1.3 Vitest para el núcleo; ESLint + Prettier
-- [ ] 1.4 Estructura de carpetas: `src/sim` (núcleo), `src/worker`, `src/render`, `src/ui`, `src/presets`, `docs/`
-- [ ] 1.5 Escena base: cámara orbital, iluminación de estudio, fondo neutro
-- [ ] 1.6 CI en GitHub Actions (typecheck, tests, build)
+- [x] 1.1 Proyecto Vite + TypeScript estricto; scripts `dev`, `build`, `preview`, `test`, `typecheck`, `lint`
+- [x] 1.2 three.js con versión fijada (0.186.1); `WebGPURenderer` y detección del backend efectivo (WebGPU o WebGL 2) con aviso
+- [x] 1.3 Vitest para el núcleo; ESLint + Prettier
+- [x] 1.4 Estructura de carpetas: `src/sim` (núcleo), `src/worker`, `src/render`, `src/ui`, `src/presets`, `docs/`
+- [x] 1.5 Escena base: cámara orbital, iluminación de estudio, fondo neutro, maceta y sustrato provisionales
+- [x] 1.6 CI en GitHub Actions (typecheck, tests, build)
 
 ## Fase 2. Núcleo de simulación (reescritura de tree-growth-foundation)
 
@@ -85,15 +85,15 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 - [ ] 4.4 Preset almendro (caduco, floración antes de la brotación, fruto)
 - [ ] 4.5 Calendario estacional: reposo, brotación, expansión de hojas, engrosamiento, senescencia
 - [ ] 4.6 Hojas: morfología y ciclo de vida
-    - [ ] 4.6.1 Catálogo de formas por especie (aguja, escama, lobulada, lanceolada, ovada...) con contorno, nervadura, tamaño y variación por individuo
-    - [ ] 4.6.2 Hábito caduco o perenne por especie; perennes con renovación escalonada (vida de la hoja en años)
-    - [ ] 4.6.3 Cohortes con edad, salud y fecha propia de senescencia
-    - [ ] 4.6.4 Cambio de color otoñal no uniforme: cada hoja con su desfase y velocidad (por luz recibida, posición y aleatoriedad por semilla)
-    - [ ] 4.6.5 Caída ocasional de fondo durante todo el año (renovación, daño)
-    - [ ] 4.6.6 Caída por viento: probabilidad según intensidad de ráfaga y estado de la hoja
-    - [ ] 4.6.7 Caída estacional (abscisión masiva en otoño para caducas)
-    - [ ] 4.6.8 Física de la hoja que cae: arrastre, giro y balanceo, trayectoria coherente con el campo de viento
-    - [ ] 4.6.9 Hojas en el suelo y en la maceta, con desvanecimiento progresivo
+  - [ ] 4.6.1 Catálogo de formas por especie (aguja, escama, lobulada, lanceolada, ovada...) con contorno, nervadura, tamaño y variación por individuo
+  - [ ] 4.6.2 Hábito caduco o perenne por especie; perennes con renovación escalonada (vida de la hoja en años)
+  - [ ] 4.6.3 Cohortes con edad, salud y fecha propia de senescencia
+  - [ ] 4.6.4 Cambio de color otoñal no uniforme: cada hoja con su desfase y velocidad (por luz recibida, posición y aleatoriedad por semilla)
+  - [ ] 4.6.5 Caída ocasional de fondo durante todo el año (renovación, daño)
+  - [ ] 4.6.6 Caída por viento: probabilidad según intensidad de ráfaga y estado de la hoja
+  - [ ] 4.6.7 Caída estacional (abscisión masiva en otoño para caducas)
+  - [ ] 4.6.8 Física de la hoja que cae: arrastre, giro y balanceo, trayectoria coherente con el campo de viento
+  - [ ] 4.6.9 Hojas en el suelo y en la maceta, con desvanecimiento progresivo
 - [ ] 4.7 Flores: yemas florales, apertura, pétalos y caída
 - [ ] 4.8 Frutos: cuajado, crecimiento, masa como carga, caída
 - [ ] 4.9 Tipos `FlowerCohort` y `FruitState` en el núcleo
