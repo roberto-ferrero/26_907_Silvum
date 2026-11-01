@@ -1,0 +1,133 @@
+import type { AxisRole } from './morphotype.ts';
+import type { HazardState } from './allocation.ts';
+import type { Vec3 } from './vec3.ts';
+
+/**
+ * Estado botánico persistente (especificación §2). La geometría visible se deriva de él.
+ * Unidades: metros, años, radianes; +Y arriba. Todo es serializable (structuredClone).
+ * El papel de un eje (`role`) y su orden botánico son independientes.
+ */
+export type BudKind = 'terminal' | 'lateral';
+export type BudState = 'dormant' | 'growing' | 'dead';
+export type WoodState = 'living' | 'deadRetained' | 'detached';
+
+export interface Axis {
+  id: number;
+  parentAxisId: number | null;
+  /** Entrenudo portador en el eje padre (null en el tronco). */
+  parentSegmentId: number | null;
+  role: AxisRole;
+  botanicalOrder: number;
+  bornAtYears: number;
+  segmentIds: number[];
+  growthUnitIds: number[];
+  terminalBudId: number | null;
+  /** Azimut persistente de la rama (horizontal), usado cerca de la vertical. */
+  preferredAzimuth: Vec3;
+  /** Contador filotáctico: cuántas yemas laterales ha colocado el eje. */
+  phyllotaxisIndex: number;
+  /** Metámeros producidos por el eje (para el ruido correlacionado del rumbo). */
+  metamerCount: number;
+  woodState: WoodState;
+  diedAtYears: number | null;
+  /** Déficit sostenido filtrado en [0, 1]. */
+  sustainedDeficit01: number;
+  /** Umbral persistente para la mortalidad por déficit. */
+  mortality: HazardState;
+}
+
+/** Un episodio continuo de extensión (un brote anual). */
+export interface GrowthUnit {
+  id: number;
+  axisId: number;
+  year: number;
+  startedAtYears: number;
+  plannedMetamers: number;
+  emittedMetamers: number;
+  segmentIds: number[];
+  elongationComplete: boolean;
+}
+
+/** Entrenudo biológico. Una subdivisión de dibujo nunca crea otro. */
+export interface Segment {
+  id: number;
+  axisId: number;
+  growthUnitId: number;
+  /** Índice dentro de su unidad de crecimiento (0 = base). */
+  metamerIndex: number;
+  parentSegmentId: number | null;
+  childSegmentIds: number[];
+  bornAtYears: number;
+  /** Dirección de referencia (unitaria). */
+  direction: Vec3;
+  /** Normal material transportada (unitaria, perpendicular a `direction`). */
+  frameU: Vec3;
+  lengthM: number;
+  targetLengthM: number;
+  /** Radio en la base del entrenudo. Monotónico mientras no se desprenda. */
+  radiusM: number;
+  /** Posiciones de referencia derivadas (se recalculan desde la raíz). */
+  start: Vec3;
+  end: Vec3;
+}
+
+export interface Bud {
+  id: number;
+  axisId: number;
+  /** Entrenudo en cuyo extremo distal está la yema. */
+  segmentId: number | null;
+  kind: BudKind;
+  state: BudState;
+  bornAtYears: number;
+  /** Año a partir del cual puede liberarse. */
+  eligibleFromYear: number;
+  releaseEpisode: number;
+  /** Colocación fija al nacer, en el marco del eje portador. */
+  azimuthRad: number;
+  /** Posición relativa dentro de su unidad de crecimiento (0 base, 1 extremo). */
+  positionInUnit01: number;
+  /** Rumbo del próximo entrenudo (null: continuar el del entrenudo portador). */
+  heading: Vec3 | null;
+  hazard: HazardState;
+  /** Tasa de activación fijada al inicio de la liberación (1/año). */
+  activationRatePerYear: number;
+  /** Presupuesto asignado este año (unidades abstractas). */
+  allocated: number;
+  growthCredit: number;
+  exposure01: number;
+}
+
+export interface TreeEvent {
+  timeYears: number;
+  kind: 'bud-activated' | 'axis-born' | 'axis-died' | 'axis-shed' | 'capacity-reached';
+  id: number;
+  detail?: string;
+}
+
+export interface TreeState {
+  modelVersion: string;
+  archetypeId: string;
+  seed: number;
+  stateRevision: number;
+  completedTick: number;
+  timeYears: number;
+  developmentalStage01: number;
+  nextId: number;
+  axes: Record<number, Axis>;
+  growthUnits: Record<number, GrowthUnit>;
+  segments: Record<number, Segment>;
+  buds: Record<number, Bud>;
+  /** Última exposición total en la base (Q_base) y presupuesto anual. */
+  lastBaseExposure: number;
+  lastBudget: number;
+  capacityReached: boolean;
+  events: TreeEvent[];
+}
+
+export interface TreeLimits {
+  maxSegments: number;
+  maxBuds: number;
+  maxEvents: number;
+}
+
+export const DEFAULT_LIMITS: TreeLimits = { maxSegments: 60000, maxBuds: 60000, maxEvents: 2000 };

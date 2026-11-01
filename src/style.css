@@ -57,3 +57,48 @@ body {
   font-size: 11px;
   opacity: 0.6;
 }
+
+.panel {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 250px;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12);
+  font-size: 13px;
+  display: grid;
+  gap: 8px;
+}
+
+.panel label {
+  display: grid;
+  gap: 4px;
+}
+
+.panel .row {
+  display: flex;
+  gap: 8px;
+}
+
+.panel button {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgb(0 0 0 / 0.15);
+  background: #fff;
+  cursor: pointer;
+}
+
+.panel .info {
+  white-space: pre-line;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel .note {
+  font-size: 11px;
+  opacity: 0.6;
+}

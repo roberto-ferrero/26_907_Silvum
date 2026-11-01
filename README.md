@@ -24,7 +24,14 @@ El plan por fases y su estado están en [docs/PLAN.md](docs/PLAN.md).
 | `npm run lint`      | ESLint                                         |
 | `npm run format`    | Formatea con Prettier                          |
 
-Para forzar el backend WebGL 2 y comparar, abre la app con `?backend=webgl`.
+Parámetros de URL útiles para depurar:
+
+| Parámetro                    | Efecto                                                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `?backend=webgl`             | Fuerza el backend WebGL 2                                                                                         |
+| `?archetype=conical-conifer` | Arquetipo inicial (`broad-crown-broadleaf`, `conical-conifer`, `parasol-pine`, `columnar-tree`, `pendulous-tree`) |
+| `?seed=42`                   | Semilla inicial                                                                                                   |
+| `?years=20`                  | Avanza N años al arrancar                                                                                         |
 
 ## Estructura
 
@@ -32,9 +39,9 @@ Para forzar el backend WebGL 2 y comparar, abre la app con `?backend=webgl`.
 src/
   main.ts         arranque
   render/         renderer, detección de backend, escena y maceta
-  sim/            núcleo de simulación botánica (fase 2)
-  worker/         ejecución de ticks en Worker (fase 2)
-  presets/        especies y fenología (fase 4)
+  sim/            núcleo de simulación botánica: grafo, yemas, reparto, luz, madera
+  worker/         ejecución de ticks en Worker y protocolo de mensajes
+  presets/        arquetipos morfológicos (especies y fenología en la fase 4)
   ui/             interfaz
 tests/            tests de Vitest
 docs/PLAN.md      plan por fases

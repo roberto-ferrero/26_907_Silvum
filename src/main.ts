@@ -1,6 +1,10 @@
+import * as THREE from 'three/webgpu';
 import { createRenderer } from './render/renderer.ts';
 import { createStage } from './render/scene.ts';
+import { SkeletonView } from './render/skeleton.ts';
 import { showBackendStatus } from './ui/backend-banner.ts';
+import { ControlPanel } from './ui/controls.ts';
+import type { FromWorker, ToWorker } from './worker/protocol.ts';
 
 async function main(): Promise<void> {
   const container = document.getElementById('app');
@@ -21,6 +25,44 @@ async function main(): Promise<void> {
   };
   window.addEventListener('resize', resize);
   resize();
+
+  // El árbol nace en el punto de plantación del sustrato.
+  const treeRoot = new THREE.Group();
+  treeRoot.position.copy(stage.plantingPoint);
+  stage.scene.add(treeRoot);
+  const skeleton = new SkeletonView();
+  treeRoot.add(skeleton.object);
+
+  const worker = new Worker(new URL('./worker/simulation.worker.ts', import.meta.url), {
+    type: 'module',
+  });
+  const send = (msg: ToWorker): void => worker.postMessage(msg);
+
+  const panel = new ControlPanel({
+    onReset: (archetypeId, seed) => send({ type: 'reset', archetypeId, seed }),
+    onPlay: (yearsPerSecond) => send({ type: 'play', yearsPerSecond }),
+    onPause: () => send({ type: 'pause' }),
+  });
+
+  worker.onmessage = (event: MessageEvent<FromWorker>) => {
+    const msg = event.data;
+    if (msg.type === 'error') {
+      console.error('[Silvum] Worker:', msg.message);
+      return;
+    }
+    const previous = skeleton.object;
+    const replaced = skeleton.update(msg.snapshot);
+    if (replaced) {
+      treeRoot.remove(previous);
+      previous.dispose();
+      treeRoot.add(replaced);
+    }
+    panel.update(msg.snapshot);
+  };
+
+  // Atajo de depuración: `?years=N` avanza N años al arrancar.
+  const years = Number(params.get('years'));
+  if (years > 0) send({ type: 'advance', years });
 
   renderer.setAnimationLoop(() => {
     stage.update();
