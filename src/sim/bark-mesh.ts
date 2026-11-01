@@ -125,12 +125,13 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       for (let j = 0; j < sides; j++) {
         const a0 = base + r * (sides + 1) + j;
         const b0 = a0 + sides + 1;
+        // Orden antihorario visto desde fuera: la cara frontal es la exterior del tubo.
         indices[ix++] = a0;
-        indices[ix++] = b0;
-        indices[ix++] = a0 + 1;
         indices[ix++] = a0 + 1;
         indices[ix++] = b0;
+        indices[ix++] = a0 + 1;
         indices[ix++] = b0 + 1;
+        indices[ix++] = b0;
       }
     }
   }

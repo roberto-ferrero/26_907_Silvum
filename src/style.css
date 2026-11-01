@@ -58,6 +58,20 @@ body {
   opacity: 0.6;
 }
 
+.fps {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.45);
+  color: #f2efe8;
+  font:
+    12px/1.4 ui-monospace,
+    monospace;
+  pointer-events: none;
+}
+
 .panel {
   position: fixed;
   left: 16px;

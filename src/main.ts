@@ -7,6 +7,7 @@ import { createStage } from './render/scene.ts';
 import { SkeletonView } from './render/skeleton.ts';
 import { showBackendStatus } from './ui/backend-banner.ts';
 import { ControlPanel } from './ui/controls.ts';
+import { FpsCounter } from './ui/fps.ts';
 import type { FromWorker, ToWorker } from './worker/protocol.ts';
 
 async function main(): Promise<void> {
@@ -77,7 +78,9 @@ async function main(): Promise<void> {
   const years = Number(params.get('years'));
   if (years > 0) send({ type: 'advance', years });
 
+  const fps = new FpsCounter();
   renderer.setAnimationLoop((time) => {
+    fps.tick();
     clock.update(time);
     foliage.frame(clock.getDelta(), performance.now() / 1000);
     stage.update();
