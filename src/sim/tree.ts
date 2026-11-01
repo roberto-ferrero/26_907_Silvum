@@ -20,15 +20,7 @@ import {
   allocateWeighted,
   thresholdFromUniform,
 } from './allocation.ts';
-import {
-  DT_YEARS,
-  SEASON,
-  crosses,
-  inWindow,
-  seasonPhase,
-  windowProgress,
-  yearOf,
-} from './clock.ts';
+import { DT_YEARS, crosses, inWindow, seasonPhase, windowProgress, yearOf } from './clock.ts';
 import { ShadowGrid, type LightField } from './light.ts';
 import {
   activationBias,
@@ -38,6 +30,23 @@ import {
   type AxisRole,
   type MorphologicalFrame,
 } from './morphotype.ts';
+import {
+  DETACH_STRIDE,
+  createLeafCohort,
+  flushShortShoots,
+  initiateFlowers,
+  leafOccluders,
+  onAxesDied,
+  pruneFlowers,
+  refreshLeafCohorts,
+  removeOrphanOrgans,
+  updateFlowers,
+  updateFruits,
+  updateLeaves,
+  type OrganContext,
+} from './organs.ts';
+import type { PhenologyCalendar } from './phenology.ts';
+import { genericSpeciesId, getSpecies, isSpeciesId, type Species } from './species.ts';
 import { branchBirthDirection, inclinationTargetDirection, steerDirection } from './orientation.ts';
 import { Channel, eventSigned, eventUniform, smoothNoise1D } from './random.ts';
 import {
@@ -60,9 +69,10 @@ import {
   transportNormal,
   type Vec3,
 } from './vec3.ts';
+import type { WindSettings } from './wind.ts';
 import { growRadius, pipeTargetRadius } from './wood.ts';
 
-export const MODEL_VERSION = 'silvum-core-0.2.0';
+export const MODEL_VERSION = 'silvum-core-0.3.0';
 
 /** Constantes de ingeniería del motor (no son parámetros de especie). */
 const ENGINE = Object.freeze({
@@ -78,35 +88,108 @@ const ENGINE = Object.freeze({
   baseMortalityPerYear: 1.0,
   /** Años que la madera muerta permanece unida antes de desprenderse. */
   deadWoodRetentionYears: 3,
-  /** Edad (años) hasta la que un entrenudo cuenta como portador de follaje para la sombra. */
-  foliageAgeYears: 2,
-  /** Peso de sombra de un entrenudo joven (follaje distribuido) frente a una yema (1). */
-  foliageShadowWeight: 0.25,
+  /** Desprendimientos visuales retenidos como máximo entre dos publicaciones. */
+  maxPendingDetachments: 6000,
 });
 
 export interface SimulationOptions {
-  archetypeId: string;
+  /** Especie (preset) o, para depurar, la especie genérica de un arquetipo. */
+  speciesId?: string;
+  archetypeId?: string;
   seed: number;
   limits?: TreeLimits;
+}
+
+/** Resuelve el id de especie a partir de las opciones (`speciesId` tiene prioridad). */
+export function resolveSpeciesId(options: { speciesId?: string; archetypeId?: string }): string {
+  if (options.speciesId) return options.speciesId;
+  if (options.archetypeId) {
+    return isSpeciesId(options.archetypeId)
+      ? options.archetypeId
+      : genericSpeciesId(options.archetypeId);
+  }
+  throw new Error('Falta la especie o el arquetipo');
 }
 
 /** Simulación de un individuo: estado serializable + caché no serializable (campo de luz). */
 export class TreeSimulation {
   state: TreeState;
+  readonly species: Species;
   readonly archetype: Archetype;
+  readonly calendar: PhenologyCalendar;
   readonly limits: TreeLimits;
   private light: LightField | null = null;
   private lightRevision = -1;
+  /** Yemas en el estado, contadas una vez por tick de elongación (evita O(n²)). */
+  private budCount = 0;
+  /** Desprendimientos visuales pendientes de publicar (fuera del estado biológico). */
+  private detached: Float32Array = new Float32Array(256 * DETACH_STRIDE);
+  private detachedCount = 0;
+  private readonly organs: OrganContext;
 
   constructor(options: SimulationOptions | { state: TreeState; limits?: TreeLimits }) {
     if ('state' in options) {
       this.state = options.state;
-      this.archetype = getArchetype(options.state.archetypeId);
     } else {
-      this.archetype = getArchetype(options.archetypeId);
-      this.state = createTreeState(options.archetypeId, options.seed);
+      this.state = createTreeState(resolveSpeciesId(options), options.seed);
     }
+    this.species = getSpecies(this.state.speciesId);
+    this.archetype = {
+      morphotype: getArchetype(this.species.archetypeId).morphotype,
+      scale: this.species.resolvedScale,
+    };
+    this.calendar = this.species.phenology;
     this.limits = options.limits ?? DEFAULT_LIMITS;
+    const state = (): TreeState => this.state;
+    this.organs = {
+      get state() {
+        return state();
+      },
+      species: this.species,
+      light: () => this.lightField(),
+      emit: (record) => this.pushDetachment(record),
+    };
+  }
+
+  private pushDetachment(record: Float32Array): void {
+    if (this.detachedCount >= ENGINE.maxPendingDetachments) {
+      // Se conservan los más recientes: se descarta la mitad más antigua de una vez.
+      const keep = this.detachedCount >> 1;
+      this.detached.copyWithin(
+        0,
+        (this.detachedCount - keep) * DETACH_STRIDE,
+        this.detachedCount * DETACH_STRIDE,
+      );
+      this.detachedCount = keep;
+    }
+    const need = (this.detachedCount + 1) * DETACH_STRIDE;
+    if (need > this.detached.length) {
+      const grown = new Float32Array(this.detached.length * 2);
+      grown.set(this.detached);
+      this.detached = grown;
+    }
+    this.detached.set(record, this.detachedCount * DETACH_STRIDE);
+    this.detachedCount += 1;
+  }
+
+  /** Entrega y vacía los desprendimientos visuales acumulados desde la última llamada. */
+  drainDetachments(): Float32Array {
+    const out = this.detached.slice(0, this.detachedCount * DETACH_STRIDE);
+    this.detachedCount = 0;
+    return out;
+  }
+
+  /** Cambia el viento en el instante actual (evento del entorno, reproducible). */
+  setWind(wind: WindSettings): void {
+    const s = this.state;
+    s.environment = { ...s.environment, wind: { ...wind } };
+    s.stateRevision += 1;
+    pushEvent(s, this.limits, {
+      timeYears: s.timeYears,
+      kind: 'environment-changed',
+      id: 0,
+      detail: `viento ${wind.intensity01.toFixed(2)}`,
+    });
   }
 
   /** Avanza un tick biológico (una semana). */
@@ -116,26 +199,38 @@ export class TreeSimulation {
     const t1 = t0 + DT_YEARS;
     const phase = seasonPhase(t0);
     const year = yearOf(t0);
+    const cal = this.calendar;
     s.developmentalStage01 = Math.min(1, t0 / this.archetype.scale.maturityYears);
 
-    if (crosses(t0, t1, SEASON.budRelease[0])) this.beginFlush(year);
-    if (inWindow(phase, SEASON.budRelease)) this.releaseLateralBuds(t0, phase);
+    if (crosses(t0, t1, cal.budRelease[0])) this.beginFlush(year);
+    if (inWindow(phase, cal.budRelease)) this.releaseLateralBuds(t0, phase);
 
     let geometryChanged = false;
-    if (inWindow(phase, SEASON.elongation)) {
+    if (inWindow(phase, cal.elongation)) {
       this.emitMetamers(t0, phase);
       geometryChanged = this.expandInternodes() || geometryChanged;
     }
-    if (crosses(t0, t1, SEASON.elongation[1])) {
+    if (crosses(t0, t1, cal.elongation[1])) {
       this.completeElongation(year);
       geometryChanged = true;
     }
-    if (inWindow(phase, SEASON.radialGrowth)) this.thicken();
-    if (crosses(t0, t1, SEASON.survivalAt)) {
+    if (inWindow(phase, cal.radialGrowth)) this.thicken();
+    if (crosses(t0, t1, cal.survivalAt)) {
       this.evaluateSurvival(t0);
       geometryChanged = true;
     }
     if (geometryChanged) updatePositions(s);
+
+    // Órganos: inducción floral, flores, frutos y hojas (después de la madera del tick).
+    const flowering = this.species.flowering;
+    if (flowering) {
+      const induction =
+        flowering.position === 'previousShoot' ? flowering.inductionPhase : flowering.bloom[0];
+      if (crosses(t0, t1, induction)) initiateFlowers(this.organs, year, t0);
+      updateFlowers(this.organs, t1);
+    }
+    updateFruits(this.organs, t1);
+    updateLeaves(this.organs, t0, t1, s.completedTick);
 
     s.timeYears = t1;
     s.completedTick += 1;
@@ -149,10 +244,18 @@ export class TreeSimulation {
   }
 
   private frameFor(role: AxisRole): MorphologicalFrame {
-    return evaluateRoleProgram(
+    const frame = evaluateRoleProgram(
       this.archetype.morphotype.roles[role],
       this.state.developmentalStage01,
     );
+    const m = this.species.morphology;
+    const offset = m.inclinationOffsetDeg[role] ?? 0;
+    if (offset === 0 && m.branchingFactor === 1) return frame;
+    return {
+      ...frame,
+      targetInclinationDeg: Math.max(0, Math.min(180, frame.targetInclinationDeg + offset)),
+      branchingIntensity: Math.max(0, Math.min(1, frame.branchingIntensity * m.branchingFactor)),
+    };
   }
 
   private lightField(): LightField {
@@ -171,6 +274,10 @@ export class TreeSimulation {
     this.light = buildLightField(s);
     this.lightRevision = s.stateRevision;
     const light = this.light;
+    // Con la luz ya fijada: cohortes vacías fuera, perennes con su nueva luz.
+    refreshLeafCohorts(this.organs);
+    pruneFlowers(s);
+    flushShortShoots(this.organs, year, s.timeYears);
 
     const budsBySegment = new Map<number | null, Bud[]>();
     for (const bud of Object.values(s.buds)) {
@@ -431,14 +538,15 @@ export class TreeSimulation {
     // Las claves enteras de un objeto se recorren en orden ascendente: orden estable por id.
     const growing = Object.values(s.growthUnits).filter((gu) => !gu.elongationComplete);
     let segmentCount = Object.keys(s.segments).length;
+    this.budCount = Object.keys(s.buds).length;
     for (const gu of growing) {
       const axis = s.axes[gu.axisId];
       if (!axis || axis.woodState !== 'living') {
         gu.elongationComplete = true;
         continue;
       }
-      const startPhase = Math.max(SEASON.elongation[0], seasonPhase(gu.startedAtYears));
-      const window: readonly [number, number] = [startPhase, SEASON.elongation[1]];
+      const startPhase = Math.max(this.calendar.elongation[0], seasonPhase(gu.startedAtYears));
+      const window: readonly [number, number] = [startPhase, this.calendar.elongation[1]];
       const progress = windowProgress(phase + DT_YEARS, window);
       const due = Math.min(gu.plannedMetamers, Math.ceil(gu.plannedMetamers * progress - 1e-9));
       while (gu.emittedMetamers < due) {
@@ -531,6 +639,14 @@ export class TreeSimulation {
     gu.emittedMetamers += 1;
     bud.segmentId = seg.id;
     bud.heading = null;
+    // Hojas del nudo: la primera con el azimut de la yema axilar que subtiende.
+    createLeafCohort(
+      this.organs,
+      seg,
+      axis,
+      t0,
+      (((axis.phyllotaxisIndex * sc.divergenceDeg) % 360) * Math.PI) / 180,
+    );
 
     // Yemas axilares: una por nudo con divergencia explícita, o cohorte al final del brote.
     const cohort = morphotype.branchingZone.illustrativeCohortAzimuthDeg;
@@ -551,7 +667,7 @@ export class TreeSimulation {
     azimuthDeg: number,
   ): void {
     const s = this.state;
-    if (Object.keys(s.buds).length >= this.limits.maxBuds) return;
+    if (this.budCount >= this.limits.maxBuds) return;
     const id = s.nextId++;
     const jitter = 12 * eventSigned(s.seed, id, 0, Channel.azimuthJitter);
     s.buds[id] = newBud(id, axis.id, seg.id, 'lateral', t0, yearOf(t0) + 1, {
@@ -559,6 +675,7 @@ export class TreeSimulation {
       positionInUnit01: position01,
     });
     axis.phyllotaxisIndex += 1;
+    this.budCount += 1;
   }
 
   private expandInternodes(): boolean {
@@ -594,19 +711,23 @@ export class TreeSimulation {
   private thicken(): void {
     const s = this.state;
     const { scale: sc, morphotype } = this.archetype;
+    const exponent = morphotype.radiusPipeExponent;
+    pipeTargetRadius([], exponent); // valida el exponente
     const all = Object.values(s.segments);
     for (let i = all.length - 1; i >= 0; i--) {
       const seg = all[i]!;
       const axis = s.axes[seg.axisId];
       if (!axis || axis.woodState !== 'living') continue;
-      const childRadii = seg.childSegmentIds
-        .map((c) => s.segments[c])
-        .filter((c): c is Segment => !!c)
-        .map((c) => c.radiusM);
-      const pipe =
-        childRadii.length > 0
-          ? pipeTargetRadius(childRadii, morphotype.radiusPipeExponent)
-          : sc.terminalRadiusM;
+      // Objetivo tipo pipe sobre los hijos (bucle sin arrays: se evalúa cada tick).
+      let sum = 0;
+      let children = 0;
+      for (const c of seg.childSegmentIds) {
+        const child = s.segments[c];
+        if (!child) continue;
+        sum += child.radiusM ** exponent;
+        children++;
+      }
+      const pipe = children > 0 ? sum ** (1 / exponent) : sc.terminalRadiusM;
       // Demanda cambial propia de los ejes vivos, además del objetivo geométrico.
       const target = Math.max(pipe, seg.radiusM) + sc.cambialDemandMPerYear * DT_YEARS;
       seg.radiusM = growRadius(seg.radiusM, target, sc.maxRadialGrowthMPerYear, DT_YEARS, 1);
@@ -641,14 +762,18 @@ export class TreeSimulation {
       axis.mortality = step.state;
       if (step.crossedAtFraction !== null) dying.push(axis);
     }
-    if (dying.length > 0)
+    if (dying.length > 0) {
       killAxes(
         s,
         dying.map((a) => a.id),
         t0,
         this.limits,
       );
-    // Madera muerta retenida que se desprende.
+      onAxesDied(this.organs, t0);
+    }
+    // Madera muerta retenida que se desprende (yemas y órganos se limpian en una pasada).
+    const children = axisChildren(s);
+    const shed = new Set<number>();
     for (const axis of axes) {
       if (
         axis.woodState === 'deadRetained' &&
@@ -656,19 +781,28 @@ export class TreeSimulation {
         t0 - axis.diedAtYears >= ENGINE.deadWoodRetentionYears &&
         s.axes[axis.parentAxisId ?? -1]?.woodState !== 'deadRetained'
       ) {
-        shedAxis(s, axis.id, t0, this.limits);
+        shedAxis(s, axis.id, t0, this.limits, children, shed);
       }
+    }
+    if (shed.size > 0) {
+      for (const bud of Object.values(s.buds)) if (shed.has(bud.axisId)) delete s.buds[bud.id];
+      removeOrphanOrgans(s);
     }
   }
 }
 
 // ── Utilidades del estado ─────────────────────────────────────────────────────────────
 
-export function createTreeState(archetypeId: string, seed: number): TreeState {
-  getArchetype(archetypeId); // valida el id
+/** Estado inicial (una semilla). Acepta un id de especie o de arquetipo. */
+export function createTreeState(speciesOrArchetypeId: string, seed: number): TreeState {
+  const speciesId = speciesOrArchetypeId.includes(':')
+    ? speciesOrArchetypeId
+    : resolveSpeciesId({ archetypeId: speciesOrArchetypeId });
+  const species = getSpecies(speciesId); // valida el id
   const s: TreeState = {
     modelVersion: MODEL_VERSION,
-    archetypeId,
+    speciesId,
+    archetypeId: species.archetypeId,
     seed: seed >>> 0,
     stateRevision: 0,
     completedTick: 0,
@@ -679,6 +813,10 @@ export function createTreeState(archetypeId: string, seed: number): TreeState {
     growthUnits: {},
     segments: {},
     buds: {},
+    leafCohorts: {},
+    flowerCohorts: {},
+    fruits: {},
+    environment: { wind: { intensity01: 0, directionRad: 0 } },
     lastBaseExposure: 0,
     lastBudget: 0,
     capacityReached: false,
@@ -789,7 +927,11 @@ function budPosition(s: TreeState, bud: Bud): Vec3 {
   return seg ? seg.end : [0, 0, 0];
 }
 
-/** Construye el campo de luz desde el estado: yemas vivas y entrenudos jóvenes como follaje. */
+/**
+ * Construye el campo de luz desde el estado: yemas vivas y hojas como follaje. En las
+ * caducas, el follaje de la temporada anterior cuenta durante la brotación (la copa que
+ * sombreó el año previo), para no tratar el árbol desnudo de invierno como luz plena.
+ */
 export function buildLightField(s: TreeState): LightField {
   const occluders: { position: Vec3; weight: number }[] = [];
   for (const bud of Object.values(s.buds)) {
@@ -797,11 +939,7 @@ export function buildLightField(s: TreeState): LightField {
     if (s.axes[bud.axisId]?.woodState !== 'living') continue;
     occluders.push({ position: budPosition(s, bud), weight: 1 });
   }
-  for (const seg of Object.values(s.segments)) {
-    if (s.timeYears - seg.bornAtYears > ENGINE.foliageAgeYears) continue;
-    if (s.axes[seg.axisId]?.woodState !== 'living') continue;
-    occluders.push({ position: seg.end, weight: ENGINE.foliageShadowWeight });
-  }
+  leafOccluders(s, getSpecies(s.speciesId), occluders);
   return new ShadowGrid(occluders);
 }
 
@@ -863,10 +1001,19 @@ function killAxes(s: TreeState, axisIds: readonly number[], t: number, limits: T
 /**
  * Desprendimiento: el subárbol abandona el individuo. Sus órganos se eliminan del estado
  * activo (queda el eje marcado `detached` y el evento) y se desenlazan del portador.
+ * Los ejes desprendidos se añaden a `shed`: el llamador borra sus yemas en una pasada.
  */
-function shedAxis(s: TreeState, axisId: number, t: number, limits: TreeLimits): void {
-  const ids = new Set(descendantAxes(s, axisId));
+function shedAxis(
+  s: TreeState,
+  axisId: number,
+  t: number,
+  limits: TreeLimits,
+  children: Map<number, number[]>,
+  shed: Set<number>,
+): void {
+  const ids = descendantAxes(s, axisId, children);
   for (const id of ids) {
+    shed.add(id);
     const axis = s.axes[id]!;
     axis.woodState = 'detached';
     for (const segId of axis.segmentIds) delete s.segments[segId];
@@ -875,7 +1022,6 @@ function shedAxis(s: TreeState, axisId: number, t: number, limits: TreeLimits): 
     axis.growthUnitIds = [];
     axis.terminalBudId = null;
   }
-  for (const bud of Object.values(s.buds)) if (ids.has(bud.axisId)) delete s.buds[bud.id];
   const root = s.axes[axisId];
   const carrier = root?.parentSegmentId != null ? s.segments[root.parentSegmentId] : undefined;
   if (carrier) {

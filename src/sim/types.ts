@@ -1,6 +1,7 @@
 import type { AxisRole } from './morphotype.ts';
 import type { HazardState } from './allocation.ts';
 import type { Vec3 } from './vec3.ts';
+import type { WindSettings } from './wind.ts';
 
 /**
  * Estado botánico persistente (especificación §2). La geometría visible se deriva de él.
@@ -97,15 +98,93 @@ export interface Bud {
   exposure01: number;
 }
 
+/**
+ * Cohorte de hojas de un entrenudo (fase 4.6.3). Las hojas individuales no se guardan:
+ * sus rasgos (desfase, velocidad de senescencia, tamaño, giro) se derivan de
+ * (semilla, cohorte, índice), y solo persiste qué hojas siguen unidas.
+ */
+export interface LeafCohort {
+  id: number;
+  segmentId: number;
+  axisId: number;
+  bornAtYears: number;
+  /** Hojas (o haces de acículas) al formarse; ≤ 30. */
+  count: number;
+  /** Bit i = la hoja i sigue unida. */
+  attachedMask: number;
+  /** Azimut de la primera hoja (el de la yema axilar del nudo). */
+  baseAzimuthRad: number;
+  /** Luz recibida al formarse (perennes: se renueva cada brotación). */
+  exposure01: number;
+  health01: number;
+  /** Inicio propio de la senescencia (años absolutos). */
+  senescenceAtYears: number;
+  /** Duración de la transición de color (años). */
+  senescenceSpanYears: number;
+  /** El eje murió: las hojas se secan sin seguir la fenología. */
+  withered: boolean;
+  /** Caídas de fondo ocurridas (índice del siguiente evento aleatorio). */
+  backgroundDrops: number;
+  nextBackgroundDropYears: number;
+}
+
+/** Cohorte de flores de un nudo (fase 4.7). Cada flor abre y se deshoja en su fecha. */
+export interface FlowerCohort {
+  id: number;
+  segmentId: number;
+  axisId: number;
+  initiatedAtYears: number;
+  bloomYear: number;
+  count: number;
+  /** Apertura de la primera flor (años absolutos). */
+  openAtYears: number;
+  exposure01: number;
+  /** Bit i = la flor i ya perdió los pétalos (y se decidió su cuajado). */
+  shedMask: number;
+  done: boolean;
+}
+
+/** Fruto (fase 4.8). Su masa se guarda como carga para el rig (fase 5). */
+export interface FruitState {
+  id: number;
+  segmentId: number;
+  axisId: number;
+  flowerCohortId: number;
+  /** Índice de la flor de origen en su cohorte. */
+  index: number;
+  setAtYears: number;
+  /** Progreso de crecimiento [0, 1]. */
+  growth01: number;
+  massKg: number;
+  ripe: boolean;
+  /** Fecha prevista de caída (años absolutos). */
+  dropAtYears: number;
+  /** Caída fisiológica temprana (fruto joven). */
+  earlyDrop: boolean;
+}
+
+/** Entorno controlable. Cambiarlo es un evento en el instante actual. */
+export interface Environment {
+  wind: WindSettings;
+}
+
 export interface TreeEvent {
   timeYears: number;
-  kind: 'bud-activated' | 'axis-born' | 'axis-died' | 'axis-shed' | 'capacity-reached';
+  kind:
+    | 'bud-activated'
+    | 'axis-born'
+    | 'axis-died'
+    | 'axis-shed'
+    | 'capacity-reached'
+    | 'environment-changed';
   id: number;
   detail?: string;
 }
 
 export interface TreeState {
   modelVersion: string;
+  /** Especie (preset) o especie genérica de un arquetipo (`archetype:<id>`). */
+  speciesId: string;
   archetypeId: string;
   seed: number;
   stateRevision: number;
@@ -117,6 +196,10 @@ export interface TreeState {
   growthUnits: Record<number, GrowthUnit>;
   segments: Record<number, Segment>;
   buds: Record<number, Bud>;
+  leafCohorts: Record<number, LeafCohort>;
+  flowerCohorts: Record<number, FlowerCohort>;
+  fruits: Record<number, FruitState>;
+  environment: Environment;
   /** Última exposición total en la base (Q_base) y presupuesto anual. */
   lastBaseExposure: number;
   lastBudget: number;

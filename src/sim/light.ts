@@ -65,7 +65,22 @@ export class ShadowGrid implements LightField {
     this.origin = [min[0] - m, min[1] - m, min[2] - m];
     this.dims = [max[0] - min[0] + 2 * m + 1, max[1] - min[1] + m + 2, max[2] - min[2] + 2 * m + 1];
     this.cells = new Float32Array(this.dims[0] * this.dims[1] * this.dims[2]);
-    for (const o of occluders) this.addOccluder(o.position, o.weight);
+    // La pirámide es lineal en el peso: se agregan los órganos por celda y se propaga
+    // una pirámide por celda ocupada (muchas yemas y hojas comparten celda).
+    const [, ny, nz] = this.dims;
+    const byCell = new Map<number, number>();
+    for (const o of occluders) {
+      const [i, j, k] = this.cellOf(o.position);
+      const key = (i * ny + j) * nz + k;
+      byCell.set(key, (byCell.get(key) ?? 0) + o.weight);
+    }
+    const keys = [...byCell.keys()].sort((x, y) => x - y);
+    for (const key of keys) {
+      const k = key % nz;
+      const j = ((key - k) / nz) % ny;
+      const i = (key - k - j * nz) / (ny * nz);
+      this.addOccluderAtCell(i, j, k, byCell.get(key)!);
+    }
   }
 
   private cellOf(p: Vec3): [number, number, number] {
@@ -83,19 +98,22 @@ export class ShadowGrid implements LightField {
     return (i * ny + j) * nz + k;
   }
 
-  private addOccluder(p: Vec3, weight: number): void {
-    const [i, j, k] = this.cellOf(p);
+  private addOccluderAtCell(i: number, j: number, k: number, weight: number): void {
     const { depth, a, b } = this.params;
+    const [nx, ny, nz] = this.dims;
+    const cells = this.cells;
     // q empieza en 1: los órganos de un mismo nudo (misma celda) no se sombrean entre sí.
     for (let q = 1; q <= depth; q++) {
       const s = weight * a * b ** -q;
       const jj = j - q;
       if (jj < 0) break;
-      for (let di = -q; di <= q; di++) {
-        for (let dk = -q; dk <= q; dk++) {
-          const id = this.index(i + di, jj, k + dk);
-          if (id >= 0) this.cells[id] = this.cells[id]! + s;
-        }
+      const i0 = Math.max(0, i - q);
+      const i1 = Math.min(nx - 1, i + q);
+      const k0 = Math.max(0, k - q);
+      const k1 = Math.min(nz - 1, k + q);
+      for (let ii = i0; ii <= i1; ii++) {
+        const row = (ii * ny + jj) * nz;
+        for (let kk = k0; kk <= k1; kk++) cells[row + kk] = cells[row + kk]! + s;
       }
     }
   }

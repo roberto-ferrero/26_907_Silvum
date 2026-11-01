@@ -6,6 +6,7 @@
 import { DT_YEARS } from '../sim/clock.ts';
 import { buildRenderSnapshot } from '../sim/snapshot.ts';
 import { TreeSimulation } from '../sim/tree.ts';
+import type { WindSettings } from '../sim/wind.ts';
 import type { FromWorker, ToWorker } from './protocol.ts';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -18,6 +19,8 @@ let sim: TreeSimulation | null = null;
 let yearsPerSecond = 0;
 let pendingTicks = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
+/** Viento vigente: se conserva al reiniciar el árbol. */
+let wind: WindSettings | null = null;
 
 function post(message: FromWorker, transfer: Transferable[] = []): void {
   self.postMessage(message, transfer);
@@ -25,9 +28,27 @@ function post(message: FromWorker, transfer: Transferable[] = []): void {
 
 function publish(): void {
   if (!sim) return;
-  const snapshot = buildRenderSnapshot(sim.state);
-  const copy = snapshot.segments.slice();
-  post({ type: 'snapshot', snapshot: { ...snapshot, segments: copy } }, [copy.buffer]);
+  const snapshot = buildRenderSnapshot(sim.state, sim.drainDetachments());
+  // Copias compactas que se transfieren sin duplicar memoria.
+  const segments = snapshot.segments.slice();
+  const leaves = snapshot.leaves.data.slice();
+  const flowers = snapshot.flowers.data.slice();
+  const fruits = snapshot.fruits.data.slice();
+  const detachments = snapshot.detachments.slice();
+  post(
+    {
+      type: 'snapshot',
+      snapshot: {
+        ...snapshot,
+        segments,
+        leaves: { count: snapshot.leaves.count, data: leaves },
+        flowers: { count: snapshot.flowers.count, data: flowers },
+        fruits: { count: snapshot.fruits.count, data: fruits },
+        detachments,
+      },
+    },
+    [segments.buffer, leaves.buffer, flowers.buffer, fruits.buffer, detachments.buffer],
+  );
 }
 
 function runBatch(): void {
@@ -59,9 +80,14 @@ self.onmessage = (event: MessageEvent<ToWorker>) => {
     const msg = event.data;
     switch (msg.type) {
       case 'reset':
-        sim = new TreeSimulation({ archetypeId: msg.archetypeId, seed: msg.seed });
+        sim = new TreeSimulation({ speciesId: msg.speciesId, seed: msg.seed });
+        if (wind) sim.setWind(wind);
         pendingTicks = 0;
         publish();
+        break;
+      case 'wind':
+        wind = msg.wind;
+        sim?.setWind(msg.wind);
         break;
       case 'play':
         setPlaying(msg.yearsPerSecond);

@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1 y 2 completadas; siguiente, fase 3.
+- Estado: fases 0, 1 y 2 completadas; fase 4 en curso (núcleo hecho, falta el dibujo de órganos y partículas); la fase 3 queda pendiente.
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -79,24 +79,24 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 ## Fase 4. Especies y fenología
 
-- [ ] 4.1 Esquema de presets de especie sobre los arquetipos (filotaxis explícita, tipo de hoja, caducidad, escala artística declarada)
-- [ ] 4.2 Preset abeto (cónica, perenne, aguja, crecimiento rítmico por pisos)
-- [ ] 4.3 Preset roble (copa amplia, caduco, hoja plana, ejes estructurales competidores)
-- [ ] 4.4 Preset almendro (caduco, floración antes de la brotación, fruto)
-- [ ] 4.5 Calendario estacional: reposo, brotación, expansión de hojas, engrosamiento, senescencia
-- [ ] 4.6 Hojas: morfología y ciclo de vida
-  - [ ] 4.6.1 Catálogo de formas por especie (aguja, escama, lobulada, lanceolada, ovada...) con contorno, nervadura, tamaño y variación por individuo
-  - [ ] 4.6.2 Hábito caduco o perenne por especie; perennes con renovación escalonada (vida de la hoja en años)
-  - [ ] 4.6.3 Cohortes con edad, salud y fecha propia de senescencia
-  - [ ] 4.6.4 Cambio de color otoñal no uniforme: cada hoja con su desfase y velocidad (por luz recibida, posición y aleatoriedad por semilla)
-  - [ ] 4.6.5 Caída ocasional de fondo durante todo el año (renovación, daño)
-  - [ ] 4.6.6 Caída por viento: probabilidad según intensidad de ráfaga y estado de la hoja
-  - [ ] 4.6.7 Caída estacional (abscisión masiva en otoño para caducas)
+- [x] 4.1 Esquema de presets de especie sobre los arquetipos (filotaxis explícita, tipo de hoja, caducidad, escala artística declarada)
+- [x] 4.2 Preset abeto (cónica, perenne, aguja, crecimiento rítmico por pisos)
+- [x] 4.3 Preset roble (copa amplia, caduco, hoja plana, ejes estructurales competidores)
+- [x] 4.4 Preset almendro (caduco, floración antes de la brotación, fruto)
+- [x] 4.5 Calendario estacional: reposo, brotación, expansión de hojas, engrosamiento, senescencia
+- [~] 4.6 Hojas: morfología y ciclo de vida
+  - [~] 4.6.1 Catálogo de formas por especie (aguja, escama, lobulada, lanceolada, ovada...) con contorno, nervadura, tamaño y variación por individuo
+  - [x] 4.6.2 Hábito caduco o perenne por especie; perennes con renovación escalonada (vida de la hoja en años)
+  - [x] 4.6.3 Cohortes con edad, salud y fecha propia de senescencia
+  - [~] 4.6.4 Cambio de color otoñal no uniforme: cada hoja con su desfase y velocidad (por luz recibida, posición y aleatoriedad por semilla)
+  - [x] 4.6.5 Caída ocasional de fondo durante todo el año (renovación, daño)
+  - [x] 4.6.6 Caída por viento: probabilidad según intensidad de ráfaga y estado de la hoja
+  - [x] 4.6.7 Caída estacional (abscisión masiva en otoño para caducas)
   - [ ] 4.6.8 Física de la hoja que cae: arrastre, giro y balanceo, trayectoria coherente con el campo de viento
   - [ ] 4.6.9 Hojas en el suelo y en la maceta, con desvanecimiento progresivo
-- [ ] 4.7 Flores: yemas florales, apertura, pétalos y caída
-- [ ] 4.8 Frutos: cuajado, crecimiento, masa como carga, caída
-- [ ] 4.9 Tipos `FlowerCohort` y `FruitState` en el núcleo
+- [~] 4.7 Flores: yemas florales, apertura, pétalos y caída
+- [x] 4.8 Frutos: cuajado, crecimiento, masa como carga, caída
+- [x] 4.9 Tipos `FlowerCohort` y `FruitState` en el núcleo
 
 ## Fase 5. Rig de ramas, peso y viento
 

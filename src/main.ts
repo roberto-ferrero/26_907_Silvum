@@ -39,9 +39,10 @@ async function main(): Promise<void> {
   const send = (msg: ToWorker): void => worker.postMessage(msg);
 
   const panel = new ControlPanel({
-    onReset: (archetypeId, seed) => send({ type: 'reset', archetypeId, seed }),
+    onReset: (speciesId, seed) => send({ type: 'reset', speciesId, seed }),
     onPlay: (yearsPerSecond) => send({ type: 'play', yearsPerSecond }),
     onPause: () => send({ type: 'pause' }),
+    onWind: (wind) => send({ type: 'wind', wind }),
   });
 
   worker.onmessage = (event: MessageEvent<FromWorker>) => {
