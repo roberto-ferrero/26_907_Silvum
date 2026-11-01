@@ -157,6 +157,8 @@ export interface ArchitectureProgram {
   lateralSkyWeight: number;
   /** Ramas madre que arman la copa al perder el líder (intervalo, por semilla) o null. */
   forkLimbs: readonly [number, number] | null;
+  /** Una de las ramas madre releva al líder en vertical (copa cerrada); si no, vaso abierto. */
+  centralRelay: boolean;
   /** Entrenudos vivos a los que tiende el árbol adulto (saturación artística) o null. */
   woodTargetSegments: number | null;
   /** Fracción anual de la combadura por peso que pasa a la forma (memoria lenta, 5.6). */
@@ -169,6 +171,7 @@ export const NO_ARCHITECTURE: ArchitectureProgram = {
   selfPruning: null,
   lateralSkyWeight: 0,
   forkLimbs: null,
+  centralRelay: false,
   woodTargetSegments: null,
   shapeMemoryPerYear: 0,
 };

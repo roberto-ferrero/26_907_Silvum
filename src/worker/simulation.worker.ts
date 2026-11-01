@@ -4,7 +4,13 @@
  * fijo; la velocidad solo decide cuántos ticks se procesan por segundo real.
  */
 import { DT_YEARS, seasonPhase } from '../sim/clock.ts';
-import { buildCycleLeaves, type LeafCycleClock, type LeafCycleMode } from '../sim/leaf-cycle.ts';
+import {
+  buildCycleFlowers,
+  buildCycleLeaves,
+  type LeafCycleClock,
+  type LeafCycleMode,
+} from '../sim/leaf-cycle.ts';
+import type { OrganBuffers } from '../sim/snapshot.ts';
 import { DETACH_KIND, DETACH_STRIDE } from '../sim/organs.ts';
 import { buildRenderSnapshot } from '../sim/snapshot.ts';
 import { TreeSimulation } from '../sim/tree.ts';
@@ -39,7 +45,7 @@ function visualDetachments(records: Float32Array): Float32Array {
   if (leafMode === 'coupled') return records;
   const kept: number[] = [];
   for (let o = 0; o < records.length; o += DETACH_STRIDE) {
-    if (records[o] === DETACH_KIND.leaf) continue;
+    if (records[o] === DETACH_KIND.leaf || records[o] === DETACH_KIND.petal) continue;
     const r = Array.from(records.subarray(o, o + DETACH_STRIDE));
     r[1] = leafClock.years; // al reloj de las partículas
     kept.push(...r);
@@ -47,9 +53,20 @@ function visualDetachments(records: Float32Array): Float32Array {
   return new Float32Array(kept);
 }
 
-function cycleLeaves(prevPhase: number): ReturnType<typeof buildCycleLeaves> {
+/** Hojas y flores del ciclo visual, con sus caídas (null si no aplica). */
+function cycleLeaves(prevPhase: number): {
+  leaves: OrganBuffers;
+  flowers: OrganBuffers;
+  detachments: Float32Array;
+} | null {
   if (!sim || leafMode === 'coupled') return null;
-  return buildCycleLeaves(sim.state, leafClock.phase, prevPhase, leafClock.years);
+  const leaves = buildCycleLeaves(sim.state, leafClock.phase, prevPhase, leafClock.years);
+  if (!leaves) return null;
+  const flowers = buildCycleFlowers(sim.state, leafClock.phase, prevPhase, leafClock.years);
+  const detachments = new Float32Array(leaves.detachments.length + flowers.detachments.length);
+  detachments.set(leaves.detachments);
+  detachments.set(flowers.detachments, leaves.detachments.length);
+  return { leaves: leaves.leaves, flowers: flowers.flowers, detachments };
 }
 
 function leafTick(): void {
@@ -64,16 +81,18 @@ function leafTick(): void {
   const cycle = cycleLeaves(prev);
   if (!cycle) return;
   const leaves = cycle.leaves.data.slice();
+  const flowers = cycle.flowers.data.slice();
   const detachments = cycle.detachments;
   post(
     {
       type: 'foliage',
       leaves: { count: cycle.leaves.count, data: leaves },
+      flowers: { count: cycle.flowers.count, data: flowers },
       detachments,
       clockYears: leafClock.years,
       phase: leafClock.phase,
     },
-    [leaves.buffer, detachments.buffer],
+    [leaves.buffer, flowers.buffer, detachments.buffer],
   );
 }
 
@@ -103,6 +122,7 @@ function publish(): void {
     ? {
         ...built,
         leaves: cycle.leaves,
+        flowers: cycle.flowers,
         clockYears: leafClock.years,
         foliagePhase: leafClock.phase,
       }

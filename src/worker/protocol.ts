@@ -19,6 +19,7 @@ export type FromWorker =
   | {
       type: 'foliage';
       leaves: OrganBuffers;
+      flowers: OrganBuffers;
       detachments: Float32Array;
       clockYears: number;
       phase: number;

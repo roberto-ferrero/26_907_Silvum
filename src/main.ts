@@ -152,7 +152,13 @@ async function main(): Promise<void> {
       return;
     }
     if (msg.type === 'foliage') {
-      foliage.updateLeaves(msg.leaves, msg.detachments, msg.clockYears, performance.now() / 1000);
+      foliage.updateLeaves(
+        msg.flowers,
+        msg.leaves,
+        msg.detachments,
+        msg.clockYears,
+        performance.now() / 1000,
+      );
       stage.setSeason(msg.phase);
       panel.updateFoliage(msg.phase, msg.leaves.count);
       return;

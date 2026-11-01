@@ -370,6 +370,9 @@ export function initiateFlowers(ctx: OrganContext, year: number, t: number): voi
   const program = species.flowering;
   if (!program || year < program.firstFloweringYear) return;
   const light = ctx.light();
+  // Las cohortes ya terminadas se retiran aquí, no en la brotación: hasta la siguiente
+  // inducción siguen sirviendo de flores al ciclo visual independiente.
+  pruneFlowers(s);
   const ramp = Math.min(1, (year - program.firstFloweringYear + 1) / 4);
   const bloomYear = program.position === 'previousShoot' ? year + 1 : year;
   for (const seg of Object.values(s.segments)) {

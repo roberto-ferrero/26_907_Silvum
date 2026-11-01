@@ -32,6 +32,7 @@ export class FoliageView {
   private latest: RenderSnapshot | null = null;
   /** Últimos búferes recibidos (en reposo), para volver a posarlos con el rig. */
   private leafBuffers: OrganBuffers | null = null;
+  private flowerBuffers: OrganBuffers | null = null;
   private rig: BranchRig | null = null;
   private individual = '';
   private lastArrivalS = 0;
@@ -76,6 +77,7 @@ export class FoliageView {
       }
     }
     this.leafBuffers = snapshot.leaves;
+    this.flowerBuffers = snapshot.flowers;
     this.latest = snapshot;
     this.pose();
     if (rewound) this.clockYears = snapshot.clockYears;
@@ -85,6 +87,7 @@ export class FoliageView {
 
   /** Actualización del ciclo de hojas independiente: solo hojas y sus caídas. */
   updateLeaves(
+    flowers: OrganBuffers,
     leaves: OrganBuffers,
     detachments: Float32Array,
     clockYears: number,
@@ -92,7 +95,9 @@ export class FoliageView {
   ): void {
     if (!this.latest) return;
     this.leafBuffers = leaves;
+    this.flowerBuffers = flowers;
     this.leaves.update(leaves, this.rig ?? undefined);
+    this.flowers.update(flowers, this.rig ?? undefined);
     this.spawn(detachments, clockYears, nowS);
   }
 
@@ -107,7 +112,7 @@ export class FoliageView {
     if (!s) return;
     const rig = this.rig ?? undefined;
     if (this.leafBuffers) this.leaves.update(this.leafBuffers, rig);
-    this.flowers.update(s.flowers, rig);
+    if (this.flowerBuffers) this.flowers.update(this.flowerBuffers, rig);
     this.fruits.update(s.fruits, rig);
   }
 

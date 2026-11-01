@@ -11,6 +11,8 @@
 import type { Vec3 } from './vec3.ts';
 
 export interface CrownEnvelopeProgram {
+  /** Silueta: cúpula (frondosas) o cono (coníferas). Por defecto, cúpula. */
+  shape?: 'dome' | 'cone';
   /** Altura asintótica del árbol (m) y tiempo característico de crecimiento (años). */
   maxHeightM: number;
   growthYears: number;
@@ -27,6 +29,7 @@ export interface CrownEnvelopeProgram {
 }
 
 export interface EnvelopeShape {
+  kind: 'dome' | 'cone';
   heightM: number;
   radiusM: number;
   baseY: number;
@@ -41,6 +44,7 @@ export function envelopeAt(program: CrownEnvelopeProgram, ageYears: number): Env
   const ratio = program.widthRatio[0] + (program.widthRatio[1] - program.widthRatio[0]) * k;
   const baseY = program.crownBase01 * heightM;
   return {
+    kind: program.shape ?? 'dome',
     heightM,
     radiusM: (ratio * heightM) / 2,
     baseY,
@@ -52,6 +56,15 @@ export function envelopeAt(program: CrownEnvelopeProgram, ageYears: number): Env
 /** Distancia normalizada al contorno: < 1 dentro, 1 en la superficie, > 1 fuera. */
 export function envelopeDistance(e: EnvelopeShape, p: Vec3): number {
   if (e.heightM <= 0) return 0;
+  if (e.kind === 'cone') {
+    // Cono: radio máximo en la base de la copa, que se afina linealmente hasta la cima.
+    const span = Math.max(1e-6, e.heightM - e.baseY);
+    const t = (p[1] - e.baseY) / span;
+    if (t >= 1) return 1 + (t - 1) * 4;
+    const allowed = e.radiusM * Math.max(0.03, 1 - Math.max(0, t));
+    const radial = Math.hypot(p[0], p[2]) / allowed;
+    return t < 0 ? Math.max(radial, 1 - t * 4) : radial;
+  }
   const u = Math.hypot(p[0], p[2]) / Math.max(1e-6, e.radiusM);
   const above = p[1] >= e.widestY;
   const span = above ? e.heightM - e.widestY : e.widestY - e.baseY;
@@ -62,6 +75,13 @@ export function envelopeDistance(e: EnvelopeShape, p: Vec3): number {
 
 /** Dirección hacia fuera del contorno en `p` (aproximada, unitaria). */
 export function envelopeNormal(e: EnvelopeShape, p: Vec3): Vec3 {
+  if (e.kind === 'cone') {
+    const r = Math.hypot(p[0], p[2]);
+    const slope = e.radiusM / Math.max(1e-6, e.heightM - e.baseY);
+    const n: [number, number, number] = r > 1e-9 ? [p[0] / r, slope, p[2] / r] : [0, 1, 0];
+    const len = Math.hypot(n[0], n[1], n[2]);
+    return [n[0] / len, n[1] / len, n[2] / len];
+  }
   const above = p[1] >= e.widestY;
   const span = Math.max(1e-6, above ? e.heightM - e.widestY : e.widestY - e.baseY);
   const r2 = e.radiusM * e.radiusM;

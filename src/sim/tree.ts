@@ -297,7 +297,6 @@ export class TreeSimulation {
     const light = this.light;
     // Con la luz ya fijada: cohortes vacías fuera, perennes con su nueva luz.
     refreshLeafCohorts(this.organs);
-    pruneFlowers(s);
     flushShortShoots(this.organs, year, s.timeYears);
 
     const budsBySegment = new Map<number | null, Bud[]>();
@@ -343,11 +342,16 @@ export class TreeSimulation {
     // Dirección de arte: la envolvente de copa de la especie modula la señal de cada yema.
     const program = this.species.crownEnvelope;
     const shape = program ? envelopeAt(program, s.timeYears) : null;
-    // El líder marca la altura: su yema terminal no se modula.
-    const envelopeFactor = (bud: Bud): number =>
-      shape && !(bud.kind === 'terminal' && s.axes[bud.axisId]?.parentAxisId === null)
-        ? envelopeSignalFactor(envelopeDistance(shape, budPosition(s, bud)))
-        : 1;
+    // El líder marca la altura: su yema terminal solo se frena por encima de la envolvente.
+    const envelopeFactor = (bud: Bud): number => {
+      if (!shape) return 1;
+      const p = budPosition(s, bud);
+      if (bud.kind === 'terminal' && s.axes[bud.axisId]?.parentAxisId === null) {
+        const over = p[1] / Math.max(shape.heightM, 1e-6) - 1;
+        return over > 0 ? Math.exp(-over * 9) : 1;
+      }
+      return envelopeSignalFactor(envelopeDistance(shape, p));
+    };
     for (const list of budsBySegment.values()) {
       for (const bud of list) {
         if (!eligible(bud)) continue;
@@ -552,7 +556,7 @@ export class TreeSimulation {
       this.activateLateral(bud, s.timeYears);
       // La primera rama madre releva al líder casi en vertical: la copa cierra por arriba.
       const limb = s.axes[bud.axisId];
-      if (i === 0 && limb && limb.id !== trunk.id) {
+      if (i === 0 && limb && limb.id !== trunk.id && this.species.architecture.centralRelay) {
         limb.uprightRelay = true;
         bud.heading = normalizeOr(add(UP, scale(limb.preferredAzimuth, 0.35)), UP);
       }

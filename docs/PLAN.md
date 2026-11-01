@@ -111,7 +111,9 @@ Notas de la fase 4:
 - Correcciones del motor: el déficit de luz de un eje se mide sobre su subárbol (antes una rama madre sin yemas propias moría con todas sus ramillas vivas); ningún entrenudo crece por debajo del sustrato (adelanto de 3.3); fuera dos costes cuadráticos (conteo de yemas y desprendimiento de ejes).
 - Dirección de arte del roble (decisión 14): envolvente de copa en cúpula que guía la señal de las yemas y curva los brotes hacia dentro (`src/sim/envelope.ts`), 3-5 ramas madre repartidas en azimut al perder el líder y una que lo releva en vertical, aclareo del interior, saturación de madera (≈ 13.000 entrenudos estables de 40 a 80 años), exponente de tuberías 2,35 (tronco ≈ 7-10 cm a 40-80 años) y manojos de 4 hojas por instancia.
 - Ciclo de hojas independiente (decisión 15, `src/sim/leaf-cycle.ts`): en caducas, las cohortes de la última temporada se evalúan en `año de la temporada + fase visual` con un reloj propio del Worker (por defecto 40 s por año, editable en el panel o con `?leafSeconds=`); las caídas biológicas de hojas dejan de dibujarse y las del ciclo visual pasan a las partículas. Las perennes siguen el estado biológico. `?leafCycle=coupled` vuelve al comportamiento ligado.
-- Pendiente para otras fases: la forma del abeto aún no es cónica y no hay conos; los mecanismos de arquitectura (`architecture` en el preset) están listos para aplicarlos al abeto y al almendro.
+- Dirección de arte del abeto y del almendro (decisión 14): envolvente cónica para el abeto (líder recto que se frena solo por encima de la silueta, pisos casi horizontales, ramas hasta la base) y copa en vaso abierto para el almendro (cruz baja con 3-4 ramas madre sin relevo central). Canon del abeto en `tests/fir-canon.test.ts`.
+- Con el ciclo de hojas independiente, las flores también siguen el ciclo visual (el almendro florece desnudo antes de brotar); las cohortes florales terminadas se retiran en la siguiente inducción.
+- Pendiente para otras fases: no hay conos en el abeto.
 
 ## Fase 5. Rig de ramas, peso y viento
 
