@@ -63,6 +63,13 @@ export interface RenderSnapshot {
   detachments: Float32Array;
   /** Malla continua de corteza (tubos por eje). */
   bark: BarkMesh;
+  /**
+   * Reloj de las partículas y de la descomposición en el suelo (años). Es el tiempo
+   * biológico salvo con el ciclo de hojas independiente, que lleva su propio reloj.
+   */
+  clockYears: number;
+  /** Fase del año que muestra el follaje (la biológica o la del ciclo de hojas). */
+  foliagePhase: number;
 }
 
 function writeOrgan(
@@ -234,5 +241,7 @@ export function buildRenderSnapshot(
     fruitMassKg: fruits.massKg,
     detachments,
     bark: buildBarkMesh(s),
+    clockYears: s.timeYears,
+    foliagePhase: phase,
   };
 }

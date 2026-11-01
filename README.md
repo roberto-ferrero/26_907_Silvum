@@ -35,6 +35,8 @@ Parámetros de URL útiles para depurar:
 | `?years=20`                  | Avanza N años al arrancar (admite fracciones: `20.8` es finales de octubre)                                           |
 | `?wind=0.6`                  | Intensidad inicial del viento (0-1)                                                                                   |
 | `?skeleton=1`                | Vista de diagnóstico con un cilindro por entrenudo en lugar de la corteza continua                                    |
+| `?leafSeconds=20`            | Segundos reales por año del ciclo de hojas independiente                                                              |
+| `?leafCycle=coupled`         | Ciclo de hojas ligado al crecimiento                                                                                  |
 
 ## Estructura
 

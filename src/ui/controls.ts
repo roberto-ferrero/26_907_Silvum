@@ -2,12 +2,16 @@ import { listArchetypes } from '../sim/morphotype.ts';
 import type { RenderSnapshot } from '../sim/snapshot.ts';
 import { genericSpeciesId, isSpeciesId, listSpecies } from '../sim/species.ts';
 import type { WindSettings } from '../sim/wind.ts';
+import { seasonName } from '../sim/clock.ts';
+import type { LeafCycleMode } from '../sim/leaf-cycle.ts';
 
 export interface ControlHandlers {
   onReset(speciesId: string, seed: number): void;
   onPlay(yearsPerSecond: number): void;
   onPause(): void;
   onWind(wind: WindSettings): void;
+  /** Ciclo de hojas: independiente con su velocidad (años visuales/s) o ligado al crecimiento. */
+  onLeafCycle(mode: LeafCycleMode, yearsPerSecond: number): void;
 }
 
 /**
@@ -44,6 +48,15 @@ export class ControlPanel {
       <label>Dirección del viento
         <input data-k="windDir" type="range" min="0" max="360" step="5" value="30" />
       </label>
+      <label>Ciclo de hojas
+        <select data-k="leafMode">
+          <option value="free">Independiente del crecimiento</option>
+          <option value="coupled">Ligado al crecimiento</option>
+        </select>
+      </label>
+      <label data-k="leafSpeedRow">Duración de un año de hojas <span data-k="leafSpeedLabel"></span>
+        <input data-k="leafSpeed" type="range" min="5" max="180" step="5" value="40" />
+      </label>
       <div class="info" data-k="info"></div>
       <div class="note">Especies ilustrativas no calibradas; escala artística declarada.</div>
     `;
@@ -67,6 +80,22 @@ export class ControlPanel {
     const windDir = q<HTMLInputElement>('windDir');
     const windLabel = q<HTMLElement>('windLabel');
     this.info = q<HTMLElement>('info');
+    const leafMode = q<HTMLSelectElement>('leafMode');
+    const leafSpeed = q<HTMLInputElement>('leafSpeed');
+    const leafSpeedLabel = q<HTMLElement>('leafSpeedLabel');
+    const leafSpeedRow = q<HTMLElement>('leafSpeedRow');
+    const sendLeafCycle = (): void => {
+      const seconds = Number(leafSpeed.value);
+      leafSpeedLabel.textContent = `${seconds} s`;
+      leafSpeedRow.style.display = leafMode.value === 'free' ? '' : 'none';
+      handlers.onLeafCycle(leafMode.value as LeafCycleMode, 1 / seconds);
+    };
+    const requestedLeafSeconds = Number(params.get('leafSeconds'));
+    if (requestedLeafSeconds > 0) leafSpeed.value = String(requestedLeafSeconds);
+    if (params.get('leafCycle') === 'coupled') leafMode.value = 'coupled';
+    leafMode.addEventListener('change', sendLeafCycle);
+    leafSpeed.addEventListener('input', sendLeafCycle);
+    this.coupled = (): boolean => leafMode.value === 'coupled';
 
     const rate = (): number => Math.round(10 ** Number(speed.value) * 100) / 100;
     const reset = (): void => {
@@ -98,9 +127,21 @@ export class ControlPanel {
     speedLabel.textContent = `${rate()} años/s`;
     sendWind();
     reset();
+    sendLeafCycle();
+  }
+
+  private readonly coupled: () => boolean;
+  private foliageLine = '';
+  private lastSnapshot: RenderSnapshot | null = null;
+
+  /** Estado del ciclo de hojas independiente (estación que muestra el follaje). */
+  updateFoliage(phase: number, leaves: number): void {
+    this.foliageLine = `Hojas: ${seasonName(phase)} · ${leaves} visibles`;
+    if (this.lastSnapshot) this.update(this.lastSnapshot);
   }
 
   update(s: RenderSnapshot): void {
+    this.lastSnapshot = s;
     const year = Math.floor(s.timeYears);
     const reproduction =
       s.flowers.count + s.fruits.count > 0
@@ -111,6 +152,7 @@ export class ControlPanel {
       `etapa ${(s.developmentalStage01 * 100).toFixed(0)} % · ${s.leaves.count} hojas\n` +
       `${s.segmentCount} entrenudos · ${s.livingAxes} ejes vivos · ${s.deadAxes} muertos` +
       reproduction +
-      (s.capacityReached ? '\nCapacidad alcanzada: crecimiento pausado' : '');
+      (s.capacityReached ? '\nCapacidad alcanzada: crecimiento pausado' : '') +
+      (this.coupled() || !this.foliageLine ? '' : `\n${this.foliageLine}`);
   }
 }

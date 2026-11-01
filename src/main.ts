@@ -53,12 +53,18 @@ async function main(): Promise<void> {
     onPlay: (yearsPerSecond) => send({ type: 'play', yearsPerSecond }),
     onPause: () => send({ type: 'pause' }),
     onWind: (wind) => send({ type: 'wind', wind }),
+    onLeafCycle: (mode, yearsPerSecond) => send({ type: 'leafCycle', mode, yearsPerSecond }),
   });
 
   worker.onmessage = (event: MessageEvent<FromWorker>) => {
     const msg = event.data;
     if (msg.type === 'error') {
       console.error('[Silvum] Worker:', msg.message);
+      return;
+    }
+    if (msg.type === 'foliage') {
+      foliage.updateLeaves(msg.leaves, msg.detachments, msg.clockYears, performance.now() / 1000);
+      panel.updateFoliage(msg.phase, msg.leaves.count);
       return;
     }
     if (showSkeleton) {

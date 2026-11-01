@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { FallingOrgans, type Ground } from '../fx/falling.ts';
 import { DETACH_KIND } from '../sim/organs.ts';
-import type { RenderSnapshot } from '../sim/snapshot.ts';
+import type { OrganBuffers, RenderSnapshot } from '../sim/snapshot.ts';
 import { getSpecies } from '../sim/species.ts';
 import {
   createFlowerGeometry,
@@ -31,7 +31,8 @@ export class FoliageView {
   private latest: RenderSnapshot | null = null;
   private individual = '';
   private lastArrivalS = 0;
-  private lastSnapshotYears = 0;
+  /** Último instante del reloj de partículas recibido (ver `RenderSnapshot.clockYears`). */
+  private clockYears = 0;
 
   constructor(private readonly ground: Ground) {
     this.object.name = 'foliage';
@@ -52,7 +53,7 @@ export class FoliageView {
   update(snapshot: RenderSnapshot, nowS: number): void {
     const species = getSpecies(snapshot.speciesId);
     const key = `${snapshot.speciesId}:${snapshot.seed}`;
-    const rewound = snapshot.timeYears < this.lastSnapshotYears;
+    const rewound = snapshot.clockYears < this.clockYears;
     if (key !== this.individual || rewound) {
       // Otro árbol (o vuelta atrás): fuera las partículas del anterior.
       this.individual = key;
@@ -73,27 +74,47 @@ export class FoliageView {
     this.leaves.update(snapshot.leaves);
     this.flowers.update(snapshot.flowers);
     this.fruits.update(snapshot.fruits);
+    if (rewound) this.clockYears = snapshot.clockYears;
+    this.spawn(snapshot.detachments, snapshot.clockYears, nowS);
+    this.latest = snapshot;
+  }
 
-    // Reparte cada caída del lote en el tiempo real que ha durado (máx. 1,5 s).
-    const spanYears = Math.max(1e-6, snapshot.timeYears - this.lastSnapshotYears);
+  /** Actualización del ciclo de hojas independiente: solo hojas y sus caídas. */
+  updateLeaves(
+    leaves: OrganBuffers,
+    detachments: Float32Array,
+    clockYears: number,
+    nowS: number,
+  ): void {
+    if (!this.latest) return;
+    this.leaves.update(leaves);
+    this.spawn(detachments, clockYears, nowS);
+  }
+
+  /** Reparte cada caída del lote en el tiempo real que ha durado (máx. 1,5 s). */
+  private spawn(records: Float32Array, clockYears: number, nowS: number): void {
+    const from = this.clockYears;
+    const spanYears = Math.max(1e-6, clockYears - from);
     const spanS = Math.min(1.5, Math.max(0, nowS - this.lastArrivalS));
-    const from = this.lastSnapshotYears;
-    this.falling.spawn(snapshot.detachments, this.ground, snapshot.timeYears, (t) =>
-      rewound ? 0 : Math.max(0, Math.min(1, (t - from) / spanYears)) * spanS,
+    this.falling.spawn(
+      records,
+      this.ground,
+      clockYears,
+      (t) => Math.max(0, Math.min(1, (t - from) / spanYears)) * spanS,
     );
     this.lastArrivalS = nowS;
-    this.lastSnapshotYears = snapshot.timeYears;
-    this.latest = snapshot;
+    this.clockYears = Math.max(this.clockYears, clockYears);
   }
 
   /** Avanza las partículas un fotograma. */
   frame(dt: number, nowS: number): void {
     const s = this.latest;
     if (!s) return;
-    this.falling.step(dt, nowS, s.timeYears, s.wind, s.seed, this.ground);
-    this.draw(this.fallenLeaves, DETACH_KIND.leaf, s.timeYears);
-    this.draw(this.petals, DETACH_KIND.petal, s.timeYears);
-    this.draw(this.fallenFruits, DETACH_KIND.fruit, s.timeYears);
+    const now = this.clockYears;
+    this.falling.step(dt, nowS, now, s.wind, s.seed, this.ground);
+    this.draw(this.fallenLeaves, DETACH_KIND.leaf, now);
+    this.draw(this.petals, DETACH_KIND.petal, now);
+    this.draw(this.fallenFruits, DETACH_KIND.fruit, now);
   }
 
   private draw(view: OrganView, kind: number, nowYears: number): void {
