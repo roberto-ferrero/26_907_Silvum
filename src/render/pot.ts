@@ -79,3 +79,25 @@ export function createPot(d: PotDimensions = DEFAULT_POT): THREE.Group {
 
   return group;
 }
+
+/**
+ * Altura del suelo visual en coordenadas del árbol (origen en el punto de plantación):
+ * sustrato dentro de la maceta, borde de la maceta y mesa fuera. Para los órganos que caen.
+ */
+export function groundHeightLocal(
+  d: PotDimensions = DEFAULT_POT,
+): (x: number, z: number) => number {
+  const soil = soilTopY(d);
+  const innerX = d.width / 2 - d.wall;
+  const innerZ = d.depth / 2 - d.wall;
+  const lipX = d.width / 2 + 0.01;
+  const lipZ = d.depth / 2 + 0.01;
+  const rim = d.footHeight + d.height - soil;
+  return (x, z) => {
+    const ax = Math.abs(x);
+    const az = Math.abs(z);
+    if (ax <= innerX && az <= innerZ) return 0;
+    if (ax <= lipX && az <= lipZ) return rim;
+    return -soil;
+  };
+}

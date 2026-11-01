@@ -43,8 +43,8 @@ export function eventSigned(seed: number, organId: number, eventId: number, chan
 export function smoothNoise1D(seed: number, organId: number, x: number, channel = 0): number {
   const i = Math.floor(x);
   const f = x - i;
-  const a = eventSigned(seed, organId, (i >>> 0) & 0xffffffff, channel);
-  const b = eventSigned(seed, organId, ((i + 1) >>> 0) & 0xffffffff, channel);
+  const a = eventSigned(seed, organId, i >>> 0, channel);
+  const b = eventSigned(seed, organId, (i + 1) >>> 0, channel);
   const t = f * f * (3 - 2 * f);
   return a + (b - a) * t;
 }

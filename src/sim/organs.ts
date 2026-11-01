@@ -268,6 +268,8 @@ export function updateLeaves(ctx: OrganContext, t0: number, t1: number, tick: nu
   }
 }
 
+const SHORT_SHOOT_MAX_AGE_YEARS = 3;
+
 /**
  * Brotes cortos (braquiblastos): en la brotación, cada yema lateral latente y viable abre
  * con cierta probabilidad (mayor con luz) una roseta de hojas en su nudo.
@@ -279,7 +281,8 @@ export function flushShortShoots(ctx: OrganContext, year: number, t: number): vo
   const light = ctx.light();
   for (const bud of Object.values(s.buds)) {
     if (bud.kind !== 'lateral' || bud.state !== 'dormant' || bud.eligibleFromYear > year) continue;
-    if (bud.segmentId === null) continue;
+    // Solo madera joven: los braquiblastos se agotan en ramas viejas.
+    if (bud.segmentId === null || year - bud.bornAtYears > SHORT_SHOOT_MAX_AGE_YEARS) continue;
     const axis = s.axes[bud.axisId];
     const seg = s.segments[bud.segmentId];
     if (!axis || axis.woodState !== 'living' || !seg) continue;

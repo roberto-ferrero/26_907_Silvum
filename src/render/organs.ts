@@ -1,0 +1,111 @@
+import * as THREE from 'three/webgpu';
+import { ORGAN_STRIDE, type OrganBuffers } from '../sim/snapshot.ts';
+
+/**
+ * Órganos instanciados (hojas, flores, frutos) desde los búferes de la instantánea: una
+ * instancia por órgano con pose, escala y color propios. Vista provisional hasta el LOD
+ * por cohortes de la fase 6; no altera el estado biológico.
+ */
+export class OrganView {
+  /** Contenedor estable: la malla interna se sustituye al cambiar geometría o capacidad. */
+  readonly object = new THREE.Group();
+  private mesh: THREE.InstancedMesh | null = null;
+  private capacity = 0;
+  private geometry: THREE.BufferGeometry | null = null;
+  private geometryKey = '';
+  private readonly material: THREE.MeshStandardMaterial;
+
+  constructor(name: string, material: Partial<THREE.MeshStandardMaterialParameters> = {}) {
+    this.object.name = name;
+    this.material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      side: THREE.DoubleSide,
+      roughness: 0.75,
+      metalness: 0,
+      ...material,
+    });
+  }
+
+  /** Cambia la geometría si `key` cambia (otra especie u otro individuo). */
+  setGeometry(key: string, build: () => THREE.BufferGeometry): void {
+    if (key === this.geometryKey) return;
+    this.geometryKey = key;
+    this.geometry?.dispose();
+    this.geometry = build();
+    this.rebuild(Math.max(this.capacity, 256));
+  }
+
+  private rebuild(capacity: number): void {
+    if (this.mesh) {
+      this.object.remove(this.mesh);
+      this.mesh.dispose();
+    }
+    if (!this.geometry) return;
+    const mesh = new THREE.InstancedMesh(this.geometry, this.material, capacity);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    // El atributo de color se crea desde el principio: el backend no lo detecta si aparece después.
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+    mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    mesh.count = 0;
+    this.mesh = mesh;
+    this.capacity = capacity;
+    this.object.add(mesh);
+  }
+
+  private readonly m = new THREE.Matrix4();
+  private readonly p = new THREE.Vector3();
+  private readonly q = new THREE.Quaternion();
+  private readonly s = new THREE.Vector3();
+
+  /** Copia `count` órganos del búfer (stride `ORGAN_STRIDE`). */
+  update(buffers: OrganBuffers): void {
+    this.write(buffers.count, (i, out) => {
+      const o = i * ORGAN_STRIDE;
+      const d = buffers.data;
+      out.position.set(d[o]!, d[o + 1]!, d[o + 2]!);
+      out.quaternion.set(d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!);
+      out.scale = d[o + 7]!;
+      out.color[0] = d[o + 8]!;
+      out.color[1] = d[o + 9]!;
+      out.color[2] = d[o + 10]!;
+    });
+  }
+
+  private readonly slot = {
+    position: new THREE.Vector3(),
+    quaternion: new THREE.Quaternion(),
+    scale: 1,
+    color: [1, 1, 1] as [number, number, number],
+  };
+
+  /** Escribe `count` instancias con un rellenador (también lo usan las partículas). */
+  write(count: number, fill: (i: number, out: OrganView['slot']) => void): void {
+    if (!this.geometry) return;
+    if (count > this.capacity || !this.mesh) {
+      let capacity = Math.max(this.capacity, 256);
+      while (capacity < count) capacity *= 2;
+      this.rebuild(capacity);
+    }
+    const mesh = this.mesh!;
+    const colors = mesh.instanceColor!.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      fill(i, this.slot);
+      const sc = Math.max(1e-6, this.slot.scale);
+      this.p.copy(this.slot.position);
+      this.q.copy(this.slot.quaternion);
+      this.s.set(sc, sc, sc);
+      this.m.compose(this.p, this.q, this.s);
+      mesh.setMatrixAt(i, this.m);
+      colors[i * 3] = this.slot.color[0];
+      colors[i * 3 + 1] = this.slot.color[1];
+      colors[i * 3 + 2] = this.slot.color[2];
+    }
+    mesh.count = count;
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceColor!.needsUpdate = true;
+  }
+}

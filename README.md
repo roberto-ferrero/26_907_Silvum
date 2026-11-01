@@ -26,22 +26,25 @@ El plan por fases y su estado están en [docs/PLAN.md](docs/PLAN.md).
 
 Parámetros de URL útiles para depurar:
 
-| Parámetro                    | Efecto                                                                                                            |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `?backend=webgl`             | Fuerza el backend WebGL 2                                                                                         |
-| `?archetype=conical-conifer` | Arquetipo inicial (`broad-crown-broadleaf`, `conical-conifer`, `parasol-pine`, `columnar-tree`, `pendulous-tree`) |
-| `?seed=42`                   | Semilla inicial                                                                                                   |
-| `?years=20`                  | Avanza N años al arrancar                                                                                         |
+| Parámetro                    | Efecto                                                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `?backend=webgl`             | Fuerza el backend WebGL 2                                                                                             |
+| `?species=quercus-robur`     | Especie inicial (`abies-alba`, `quercus-robur`, `prunus-dulcis`)                                                      |
+| `?archetype=conical-conifer` | Arquetipo sin especie (`broad-crown-broadleaf`, `conical-conifer`, `parasol-pine`, `columnar-tree`, `pendulous-tree`) |
+| `?seed=42`                   | Semilla inicial                                                                                                       |
+| `?years=20`                  | Avanza N años al arrancar (admite fracciones: `20.8` es finales de octubre)                                           |
+| `?wind=0.6`                  | Intensidad inicial del viento (0-1)                                                                                   |
 
 ## Estructura
 
 ```text
 src/
   main.ts         arranque
-  render/         renderer, detección de backend, escena y maceta
-  sim/            núcleo de simulación botánica: grafo, yemas, reparto, luz, madera
+  render/         renderer, escena, maceta, esqueleto, hojas, flores y frutos instanciados
+  fx/             partículas visuales: hojas, pétalos y frutos que caen
+  sim/            núcleo de simulación botánica: grafo, yemas, reparto, luz, madera, órganos
   worker/         ejecución de ticks en Worker y protocolo de mensajes
-  presets/        arquetipos morfológicos (especies y fenología en la fase 4)
+  presets/        arquetipos morfológicos y presets de especie (abeto, roble, almendro)
   ui/             interfaz
 tests/            tests de Vitest
 docs/PLAN.md      plan por fases

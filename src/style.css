@@ -86,6 +86,8 @@ body {
 
 .panel button {
   flex: 1;
+  color: #2b2722;
+  font: inherit;
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid rgb(0 0 0 / 0.15);

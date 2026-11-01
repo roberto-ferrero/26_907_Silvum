@@ -33,7 +33,7 @@ const ABIES_ALBA: SpeciesPreset = {
   leaves: {
     form: {
       shape: 'needle',
-      lengthM: 0.012,
+      lengthM: 0.016,
       widthRatio: 0.11,
       lobes: 0,
       lobeDepth: 0,
@@ -45,7 +45,7 @@ const ABIES_ALBA: SpeciesPreset = {
       petioleRatio: 0,
     },
     habit: 'evergreen',
-    perMetamer: 2,
+    perMetamer: 3,
     insertionDeg: 62,
     arrangement: 'pectinate',
     shortShoots: null,
@@ -216,7 +216,7 @@ const PRUNUS_DULCIS: SpeciesPreset = {
     intensity: 0.55,
     maxPerNode: 2,
     petals: 5,
-    sizeM: 0.016,
+    sizeM: 0.026,
     colors: { bud: '#d98ea3', petal: '#f7e9ec', center: '#c4627e' },
   },
   fruiting: {

@@ -1,4 +1,6 @@
 import * as THREE from 'three/webgpu';
+import { FoliageView } from './render/foliage.ts';
+import { groundHeightLocal } from './render/pot.ts';
 import { createRenderer } from './render/renderer.ts';
 import { createStage } from './render/scene.ts';
 import { SkeletonView } from './render/skeleton.ts';
@@ -32,6 +34,9 @@ async function main(): Promise<void> {
   stage.scene.add(treeRoot);
   const skeleton = new SkeletonView();
   treeRoot.add(skeleton.object);
+  const foliage = new FoliageView(groundHeightLocal());
+  treeRoot.add(foliage.object);
+  const clock = new THREE.Timer();
 
   const worker = new Worker(new URL('./worker/simulation.worker.ts', import.meta.url), {
     type: 'module',
@@ -58,6 +63,7 @@ async function main(): Promise<void> {
       previous.dispose();
       treeRoot.add(replaced);
     }
+    foliage.update(msg.snapshot, performance.now() / 1000);
     panel.update(msg.snapshot);
   };
 
@@ -65,7 +71,9 @@ async function main(): Promise<void> {
   const years = Number(params.get('years'));
   if (years > 0) send({ type: 'advance', years });
 
-  renderer.setAnimationLoop(() => {
+  renderer.setAnimationLoop((time) => {
+    clock.update(time);
+    foliage.frame(clock.getDelta(), performance.now() / 1000);
     stage.update();
     renderer.render(stage.scene, stage.camera);
   });
