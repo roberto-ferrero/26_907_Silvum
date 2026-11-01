@@ -27,8 +27,9 @@ export const SNAPSHOT_STRIDE = 11;
 /**
  * Órganos instanciados (hojas, flores, frutos), stride en floats:
  *   0-2 posición (m) · 3-6 cuaternión (x, y, z, w) · 7 escala (m) · 8-10 color lineal
+ *   11 entrenudo portador (id; el rig de presentación lo usa para deformar el órgano)
  */
-export const ORGAN_STRIDE = 11;
+export const ORGAN_STRIDE = 12;
 
 export interface OrganBuffers {
   count: number;
@@ -78,6 +79,7 @@ function writeOrgan(
   pose: Float32Array,
   size: number,
   rgb: readonly [number, number, number],
+  segmentId: number,
 ): void {
   const o = n * ORGAN_STRIDE;
   data.set(pose, o);
@@ -85,6 +87,7 @@ function writeOrgan(
   data[o + 8] = rgb[0];
   data[o + 9] = rgb[1];
   data[o + 10] = rgb[2];
+  data[o + 11] = segmentId;
 }
 
 const pose = new Float32Array(7);
@@ -109,6 +112,7 @@ function buildLeaves(s: TreeState): OrganBuffers {
         pose,
         leafScale(species, c, traits, i, s.timeYears),
         leafColor(species, c, traits, i, s.timeYears),
+        c.segmentId,
       );
     }
   }
@@ -139,7 +143,7 @@ function buildFlowers(s: TreeState): OrganBuffers {
         bud[1] + (petal[1] - bud[1]) * k,
         bud[2] + (petal[2] - bud[2]) * k,
       ];
-      writeOrgan(data, n++, pose, program.sizeM * open, rgb);
+      writeOrgan(data, n++, pose, program.sizeM * open, rgb, c.segmentId);
     }
   }
   return { count: n, data: data.subarray(0, n * ORGAN_STRIDE) };
@@ -164,6 +168,7 @@ function buildFruits(s: TreeState): { buffers: OrganBuffers; massKg: number } {
       pose,
       program.sizeM * (0.25 + 0.75 * f.growth01),
       fruitColor(program, f, s.timeYears),
+      f.segmentId,
     );
     mass += f.massKg;
   }

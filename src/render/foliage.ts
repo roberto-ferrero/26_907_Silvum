@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { FallingOrgans, type Ground } from '../fx/falling.ts';
+import type { BranchRig } from '../fx/rig.ts';
 import { DETACH_KIND } from '../sim/organs.ts';
 import type { OrganBuffers, RenderSnapshot } from '../sim/snapshot.ts';
 import { getSpecies } from '../sim/species.ts';
@@ -29,6 +30,9 @@ export class FoliageView {
   });
   private readonly falling = new FallingOrgans();
   private latest: RenderSnapshot | null = null;
+  /** Últimos búferes recibidos (en reposo), para volver a posarlos con el rig. */
+  private leafBuffers: OrganBuffers | null = null;
+  private rig: BranchRig | null = null;
   private individual = '';
   private lastArrivalS = 0;
   /** Último instante del reloj de partículas recibido (ver `RenderSnapshot.clockYears`). */
@@ -71,9 +75,9 @@ export class FoliageView {
         this.fallenFruits.setGeometry(snapshot.speciesId, () => createFruitGeometry(program));
       }
     }
-    this.leaves.update(snapshot.leaves);
-    this.flowers.update(snapshot.flowers);
-    this.fruits.update(snapshot.fruits);
+    this.leafBuffers = snapshot.leaves;
+    this.latest = snapshot;
+    this.pose();
     if (rewound) this.clockYears = snapshot.clockYears;
     this.spawn(snapshot.detachments, snapshot.clockYears, nowS);
     this.latest = snapshot;
@@ -87,8 +91,24 @@ export class FoliageView {
     nowS: number,
   ): void {
     if (!this.latest) return;
-    this.leaves.update(leaves);
+    this.leafBuffers = leaves;
+    this.leaves.update(leaves, this.rig ?? undefined);
     this.spawn(detachments, clockYears, nowS);
+  }
+
+  /** Vuelve a posar hojas, flores y frutos (tras moverse el rig o llegar datos). */
+  applyRig(rig: BranchRig): void {
+    this.rig = rig;
+    this.pose();
+  }
+
+  private pose(): void {
+    const s = this.latest;
+    if (!s) return;
+    const rig = this.rig ?? undefined;
+    if (this.leafBuffers) this.leaves.update(this.leafBuffers, rig);
+    this.flowers.update(s.flowers, rig);
+    this.fruits.update(s.fruits, rig);
   }
 
   /** Reparte cada caída del lote en el tiempo real que ha durado (máx. 1,5 s). */

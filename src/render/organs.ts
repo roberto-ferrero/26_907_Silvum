@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import type { BranchRig } from '../fx/rig.ts';
 import { ORGAN_STRIDE, type OrganBuffers } from '../sim/snapshot.ts';
 
 /**
@@ -61,13 +62,26 @@ export class OrganView {
   private readonly q = new THREE.Quaternion();
   private readonly s = new THREE.Vector3();
 
-  /** Copia `count` órganos del búfer (stride `ORGAN_STRIDE`). */
-  update(buffers: OrganBuffers): void {
+  /**
+   * Copia `count` órganos del búfer (stride `ORGAN_STRIDE`). Con `rig`, cada órgano sigue
+   * la pose deformada del nudo de su entrenudo.
+   */
+  update(buffers: OrganBuffers, rig?: BranchRig): void {
     this.write(buffers.count, (i, out) => {
       const o = i * ORGAN_STRIDE;
       const d = buffers.data;
-      out.position.set(d[o]!, d[o + 1]!, d[o + 2]!);
-      out.quaternion.set(d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!);
+      if (rig?.rig) {
+        const posed = rig.deformOrgan(
+          d[o + 11]!,
+          [d[o]!, d[o + 1]!, d[o + 2]!],
+          [d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!],
+        );
+        out.position.set(posed.pos[0], posed.pos[1], posed.pos[2]);
+        out.quaternion.set(posed.quat[0], posed.quat[1], posed.quat[2], posed.quat[3]);
+      } else {
+        out.position.set(d[o]!, d[o + 1]!, d[o + 2]!);
+        out.quaternion.set(d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!);
+      }
       out.scale = d[o + 7]!;
       out.color[0] = d[o + 8]!;
       out.color[1] = d[o + 9]!;

@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1, 2 y 4 completadas; fase 5 en curso; la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
+- Estado: fases 0, 1, 2 y 4 completadas; fase 5 casi completa (falta 5.8, deformación en GPU); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -115,14 +115,21 @@ Notas de la fase 4:
 
 ## Fase 5. Rig de ramas, peso y viento
 
-- [~] 5.1 Rig jerárquico: un hueso por eje (o tramo de eje) con pivote, masa y rigidez dependiente del radio
+- [x] 5.1 Rig jerárquico: un hueso por eje (o tramo de eje) con pivote, masa y rigidez dependiente del radio
 - [x] 5.2 Masa acumulada por subárbol: madera, hojas, flores y frutos
-- [~] 5.3 Combadura estática por peso (momento acumulado, aproximación de ángulo pequeño, EI artístico declarado)
-- [ ] 5.4 Mecimiento dinámico por viento: resortes amortiguados por nivel de rama, ráfagas con ruido coherente
-- [ ] 5.5 Interacción con el ratón: seleccionar, empujar y tirar de una rama sobre el mismo rig
+- [x] 5.3 Combadura estática por peso (momento acumulado, aproximación de ángulo pequeño, EI artístico declarado)
+- [x] 5.4 Mecimiento dinámico por viento: resortes amortiguados por nivel de rama, ráfagas con ruido coherente
+- [x] 5.5 Interacción con el ratón: seleccionar, empujar y tirar de una rama sobre el mismo rig
 - [x] 5.6 Memoria lenta de forma: solo la combadura sostenida modifica la curvatura de referencia en ticks biológicos
-- [ ] 5.7 Garantía: la pose del rig (viento, ratón) no altera la historia biológica (test)
+- [x] 5.7 Garantía: la pose del rig (viento, ratón) no altera la historia biológica (test)
 - [ ] 5.8 Datos del rig en GPU (pivote, rigidez, nivel) y deformación en el shader de vértices
+
+Notas de la fase 5:
+
+- Mecánica en `src/sim/mechanics.ts` (masa, centro de masas y área foliar por subárbol; k = S·r⁴/L; inercia con frecuencia propia ≤ 2,2 Hz; valores artísticos). La memoria lenta de forma (5.6) vive en el núcleo y solo usa el peso.
+- Rig de presentación en `src/fx/rig.ts`: un muelle de flexión amortiguado por eje; la flexión se reparte entre los nudos del eje y la heredan los hijos. Pares de peso (30 % en vivo, acotado), viento (arrastre del área foliar con el campo de viento compartido) y ratón (muelle hacia el puntero, atenuado hacia los portadores).
+- La deformación se hace en CPU en el hilo principal (corteza por vértice, órganos por instancia) y solo mientras algo se mueve; 5.8 (GPU) queda pendiente.
+- Ratón: arrastrar la corteza tira de la rama; la órbita se suspende mientras tanto.
 
 ## Fase 6. Render realista suave
 

@@ -142,6 +142,7 @@ export function buildCycleLeaves(
       data[o + 8] = rgb[0];
       data[o + 9] = rgb[1];
       data[o + 10] = rgb[2];
+      data[o + 11] = cohort.segmentId;
       n++;
     }
   }

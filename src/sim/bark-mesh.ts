@@ -5,6 +5,8 @@
  * no es una pieza propia; llegará en 6.2). Se construye en el Worker y se transfiere.
  * Solo dibujo: no altera el estado biológico.
  */
+import { axisMechanics } from './mechanics.ts';
+import { getSpecies } from './species.ts';
 import type { TreeState } from './types.ts';
 import { add, cross, dot, normalizeOr, scale, sub, transportNormal, type Vec3 } from './vec3.ts';
 
@@ -14,6 +16,34 @@ export interface BarkMesh {
   /** Color lineal por vértice. */
   colors: Float32Array;
   indices: Uint32Array;
+  /** Esqueleto para el rig de presentación (fase 5). */
+  rig: RigData;
+}
+
+/**
+ * Esqueleto del rig: un nudo por anillo de la corteza. Los ejes van en orden de id (el
+ * padre antes que sus hijos). El nudo 0 de cada eje es su inserción en el portador.
+ */
+export interface RigData {
+  /** Posición de reposo de cada nudo (3 floats). */
+  nodeRest: Float32Array;
+  /** Entrenudo que termina en el nudo (-1 en la inserción). */
+  nodeSegment: Int32Array;
+  /** Nudo al que pertenece cada vértice de la corteza. */
+  vertexNode: Uint32Array;
+  /** Id de cada eje (para conservar su estado dinámico entre publicaciones). */
+  axisId: Int32Array;
+  axisFirstNode: Uint32Array;
+  axisNodeCount: Uint32Array;
+  /** Nudo del portador donde se inserta el eje (-1 en el tronco). */
+  axisParentNode: Int32Array;
+  axisStiffness: Float32Array;
+  axisInertia: Float32Array;
+  axisDamping: Float32Array;
+  axisMassKg: Float32Array;
+  axisLeafAreaM2: Float32Array;
+  /** Centro de masas del subárbol (3 floats por eje). */
+  axisCom: Float32Array;
 }
 
 const srgb = (c: number): number => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -53,6 +83,26 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
     indexCount += (rings - 1) * sides * 6;
     plans.push({ segIds, sides });
   }
+  const nodeCount = plans.reduce((n, p) => n + p.segIds.length + 1, 0);
+  const mech = axisMechanics(s, getSpecies(s.speciesId));
+  const rig: RigData = {
+    nodeRest: new Float32Array(nodeCount * 3),
+    nodeSegment: new Int32Array(nodeCount),
+    vertexNode: new Uint32Array(vertexCount),
+    axisId: new Int32Array(axes.length),
+    axisFirstNode: new Uint32Array(axes.length),
+    axisNodeCount: new Uint32Array(axes.length),
+    axisParentNode: new Int32Array(axes.length),
+    axisStiffness: new Float32Array(axes.length),
+    axisInertia: new Float32Array(axes.length),
+    axisDamping: new Float32Array(axes.length),
+    axisMassKg: new Float32Array(axes.length),
+    axisLeafAreaM2: new Float32Array(axes.length),
+    axisCom: new Float32Array(axes.length * 3),
+  };
+  /** Nudo en el que termina cada entrenudo (para insertar los hijos). */
+  const endNode = new Map<number, number>();
+  let node = 0;
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
   const colors = new Float32Array(vertexCount * 3);
@@ -66,6 +116,19 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
     const dead = axis.woodState === 'deadRetained';
     const segs = segIds.map((id) => s.segments[id]!);
     const base = v;
+    const m = mech.get(axis.id);
+    rig.axisId[a] = axis.id;
+    rig.axisFirstNode[a] = node;
+    rig.axisNodeCount[a] = segs.length + 1;
+    rig.axisParentNode[a] =
+      axis.parentSegmentId !== null ? (endNode.get(axis.parentSegmentId) ?? -1) : -1;
+    rig.axisStiffness[a] = m?.stiffness ?? 1;
+    rig.axisInertia[a] = m?.inertia ?? 1;
+    rig.axisDamping[a] = m?.damping ?? 1;
+    rig.axisMassKg[a] = m?.massKg ?? 0;
+    rig.axisLeafAreaM2[a] = m?.leafAreaM2 ?? 0;
+    const com = m?.com ?? segs[0]!.start;
+    rig.axisCom.set(com, a * 3);
     let frame = segs[0]!.frameU;
     let tangent = segs[0]!.direction;
     for (let r = 0; r <= segs.length; r++) {
@@ -81,6 +144,9 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       frame = transportNormal(frame, tangent, t);
       tangent = t;
       const center = r === segs.length ? seg.end : seg.start;
+      rig.nodeRest.set(center, node * 3);
+      rig.nodeSegment[node] = r === 0 ? -1 : segIds[r - 1]!;
+      if (r > 0) endNode.set(segIds[r - 1]!, node);
       let radius =
         r === segs.length ? seg.radiusM * 0.7 : Math.max(next ? next.radiusM : seg.radiusM, 1e-5);
       // Ensanchamiento del cuello del tronco sobre el sustrato (nebari visual).
@@ -118,8 +184,10 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
         colors[o] = c[0] * grain;
         colors[o + 1] = c[1] * grain;
         colors[o + 2] = c[2] * grain;
+        rig.vertexNode[v] = node;
         v++;
       }
+      node++;
     }
     for (let r = 0; r < segs.length; r++) {
       for (let j = 0; j < sides; j++) {
@@ -135,5 +203,5 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       }
     }
   }
-  return { positions, normals, colors, indices };
+  return { positions, normals, colors, indices, rig };
 }
