@@ -14,6 +14,7 @@ import {
   type AxisRole,
   type RoleProgram,
 } from './morphotype.ts';
+import type { CrownEnvelopeProgram } from './envelope.ts';
 import {
   DEFAULT_CALENDAR,
   calendarProblems,
@@ -62,6 +63,11 @@ export interface LeafColors {
 export interface LeafProgram {
   form: LeafForm;
   habit: LeafHabit;
+  /**
+   * Hojas dibujadas por instancia unida (manojo, solo visual): más masa foliar sin más
+   * estado. Las hojas que caen se dibujan sueltas.
+   */
+  clusterSize?: number;
   /** Unidades foliares por metámero (hojas, o haces de acículas). */
   perMetamer: number;
   /** Ángulo de inserción respecto al tallo (grados). */
@@ -149,6 +155,10 @@ export interface ArchitectureProgram {
    * para árboles de luz aislados con ramas bajas vivas; la fase 3 lo hará general.
    */
   lateralSkyWeight: number;
+  /** Ramas madre que arman la copa al perder el líder (intervalo, por semilla) o null. */
+  forkLimbs: readonly [number, number] | null;
+  /** Entrenudos vivos a los que tiende el árbol adulto (saturación artística) o null. */
+  woodTargetSegments: number | null;
 }
 
 export const NO_ARCHITECTURE: ArchitectureProgram = {
@@ -156,6 +166,8 @@ export const NO_ARCHITECTURE: ArchitectureProgram = {
   terminalAbortion: {},
   selfPruning: null,
   lateralSkyWeight: 0,
+  forkLimbs: null,
+  woodTargetSegments: null,
 };
 
 export interface SpeciesPreset {
@@ -180,10 +192,14 @@ export interface SpeciesPreset {
      * punta en el árbol (0 en la cima, todo en la base): copa en cúpula, ramas bajas abiertas.
      */
     lowerCrownSpreadDeg: number;
+    /** Exponente de la regla de tuberías (mayor = troncos y ramas madre más finos). */
+    radiusPipeExponent?: number;
     /** Sesgo de activación por posición en la unidad de crecimiento (acrotonía). */
     activationBiasKnots?: [number, number][];
   };
   architecture: ArchitectureProgram;
+  /** Silueta artística a la que se guía la copa (null = sin guía). */
+  crownEnvelope: CrownEnvelopeProgram | null;
   phenology: PhenologyCalendar;
   leaves: LeafProgram;
   flowering: FloweringProgram | null;
@@ -278,6 +294,7 @@ function genericSpecies(archetypeId: string): SpeciesPreset {
     phyllotaxis: { mode: 'spiral', divergenceDeg: archetype.scale.divergenceDeg },
     morphology: { inclinationOffsetDeg: {}, branchingFactor: 1, lowerCrownSpreadDeg: 0 },
     architecture: NO_ARCHITECTURE,
+    crownEnvelope: null,
     phenology: DEFAULT_CALENDAR,
     leaves: conifer ? GENERIC_NEEDLE : GENERIC_BROADLEAF,
     flowering: null,

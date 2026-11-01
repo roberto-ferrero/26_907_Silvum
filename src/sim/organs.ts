@@ -12,6 +12,7 @@
  * Todas las decisiones aleatorias usan muestras por identidad de evento.
  */
 import { DT_YEARS, yearOf } from './clock.ts';
+import { envelopeAt, envelopeDistance, envelopeSignalFactor } from './envelope.ts';
 import {
   cohortSenescenceAt,
   healthFromExposure,
@@ -289,6 +290,7 @@ export function flushShortShoots(ctx: OrganContext, year: number, t: number): vo
   const program = species.leaves.shortShoots;
   if (!program) return;
   const light = ctx.light();
+  const envelope = species.crownEnvelope ? envelopeAt(species.crownEnvelope, t) : null;
   for (const bud of Object.values(s.buds)) {
     if (bud.kind !== 'lateral' || bud.state !== 'dormant' || bud.eligibleFromYear > year) continue;
     // Solo madera joven: los braquiblastos se agotan en ramas viejas.
@@ -297,7 +299,14 @@ export function flushShortShoots(ctx: OrganContext, year: number, t: number): vo
     const seg = s.segments[bud.segmentId];
     if (!axis || axis.woodState !== 'living' || !seg) continue;
     const exposure = light.exposure(seg.end);
-    if (eventUniform(s.seed, bud.id, year, CH.shortShoot) >= program.probability * exposure) {
+    // Con envolvente artística, las rosetas se concentran en la corteza exterior de la copa.
+    const shell = envelope
+      ? Math.min(1, envelopeSignalFactor(envelopeDistance(envelope, seg.end)))
+      : 1;
+    if (
+      eventUniform(s.seed, bud.id, year, CH.shortShoot) >=
+      program.probability * exposure * shell
+    ) {
       continue;
     }
     addLeafCohort(ctx, seg, axis, t, bud.azimuthRad, program.leaves, exposure);

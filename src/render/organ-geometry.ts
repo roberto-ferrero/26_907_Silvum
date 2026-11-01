@@ -112,6 +112,29 @@ export function createLeafGeometry(form: LeafForm): THREE.BufferGeometry {
   return mergeGeometries(parts) ?? needle;
 }
 
+/**
+ * Manojo de `n` hojas desde un mismo punto (dirección de arte): la del centro a lo largo
+ * de +y y las demás abiertas en abanico y algo giradas, un poco menores.
+ */
+export function createLeafClusterGeometry(form: LeafForm, n: number): THREE.BufferGeometry {
+  const leaf = createLeafGeometry(form);
+  if (n <= 1) return leaf;
+  const parts: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < n; k++) {
+    const g = leaf.clone();
+    if (k > 0) {
+      const side = k % 2 === 1 ? 1 : -1;
+      const step = Math.ceil(k / 2);
+      g.scale(0.82, 0.82, 0.82);
+      g.rotateY(side * 0.35 * step);
+      g.rotateZ(side * 0.6 * step);
+      g.rotateX(-0.15 * step);
+    }
+    parts.push(g);
+  }
+  return mergeGeometries(parts) ?? leaf;
+}
+
 function petalGeometry(): THREE.BufferGeometry {
   const form: LeafForm = {
     shape: 'ovate',

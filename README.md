@@ -34,6 +34,7 @@ Parámetros de URL útiles para depurar:
 | `?seed=42`                   | Semilla inicial                                                                                                       |
 | `?years=20`                  | Avanza N años al arrancar (admite fracciones: `20.8` es finales de octubre)                                           |
 | `?wind=0.6`                  | Intensidad inicial del viento (0-1)                                                                                   |
+| `?skeleton=1`                | Vista de diagnóstico con un cilindro por entrenudo en lugar de la corteza continua                                    |
 
 ## Estructura
 

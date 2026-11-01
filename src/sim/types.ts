@@ -35,6 +35,8 @@ export interface Axis {
   sustainedDeficit01: number;
   /** Umbral persistente para la mortalidad por déficit. */
   mortality: HazardState;
+  /** Rama madre que releva al líder en vertical (cierra la cima de la copa). */
+  uprightRelay?: boolean;
 }
 
 /** Un episodio continuo de extensión (un brote anual). */

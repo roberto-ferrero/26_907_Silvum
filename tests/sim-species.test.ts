@@ -245,8 +245,12 @@ describe('flores y frutos', () => {
   it('el roble da bellotas que maduran en otoño', () => {
     const sim = grown('quercus-robur', 1, 20);
     sim.drainDetachments();
-    sim.advanceYears(1);
-    const drops = detachTimes(sim.drainDetachments(), DETACH_KIND.fruit);
+    // Se vacía cada semana: el búfer de desprendimientos es acotado y hay muchas hojas.
+    const drops: number[] = [];
+    for (let i = 0; i < 104; i++) {
+      sim.step();
+      drops.push(...detachTimes(sim.drainDetachments(), DETACH_KIND.fruit));
+    }
     const ripe = drops.filter(
       (t) => seasonPhase(t) >= getSpecies('quercus-robur').fruiting!.drop[0],
     );

@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { BarkView } from './render/bark.ts';
 import { FoliageView } from './render/foliage.ts';
 import { groundHeightLocal } from './render/pot.ts';
 import { createRenderer } from './render/renderer.ts';
@@ -32,8 +33,11 @@ async function main(): Promise<void> {
   const treeRoot = new THREE.Group();
   treeRoot.position.copy(stage.plantingPoint);
   stage.scene.add(treeRoot);
+  // Corteza continua; `?skeleton=1` muestra la vista de diagnóstico con cilindros.
+  const showSkeleton = params.get('skeleton') === '1';
   const skeleton = new SkeletonView();
-  treeRoot.add(skeleton.object);
+  const bark = new BarkView();
+  treeRoot.add(showSkeleton ? skeleton.object : bark.object);
   const foliage = new FoliageView(groundHeightLocal());
   treeRoot.add(foliage.object);
   const clock = new THREE.Timer();
@@ -56,13 +60,15 @@ async function main(): Promise<void> {
       console.error('[Silvum] Worker:', msg.message);
       return;
     }
-    const previous = skeleton.object;
-    const replaced = skeleton.update(msg.snapshot);
-    if (replaced) {
-      treeRoot.remove(previous);
-      previous.dispose();
-      treeRoot.add(replaced);
-    }
+    if (showSkeleton) {
+      const previous = skeleton.object;
+      const replaced = skeleton.update(msg.snapshot);
+      if (replaced) {
+        treeRoot.remove(previous);
+        previous.dispose();
+        treeRoot.add(replaced);
+      }
+    } else bark.update(msg.snapshot.bark);
     foliage.update(msg.snapshot, performance.now() / 1000);
     panel.update(msg.snapshot);
   };

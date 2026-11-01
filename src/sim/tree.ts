@@ -21,6 +21,13 @@ import {
   thresholdFromUniform,
 } from './allocation.ts';
 import { DT_YEARS, crosses, inWindow, seasonPhase, windowProgress, yearOf } from './clock.ts';
+import {
+  envelopeAt,
+  envelopeDistance,
+  envelopeNormal,
+  envelopeSignalFactor,
+  type EnvelopeShape,
+} from './envelope.ts';
 import { DEFAULT_SHADOW, ShadowGrid, type LightField } from './light.ts';
 import {
   activationBias,
@@ -127,6 +134,8 @@ export class TreeSimulation {
   private budCount = 0;
   /** Altura del árbol al empezar el tick de elongación (derivada del estado). */
   private treeHeight = 0;
+  /** Envolvente de copa vigente en el tick (si la especie la declara). */
+  private envelope: EnvelopeShape | null = null;
   /** Desprendimientos visuales pendientes de publicar (fuera del estado biológico). */
   private detached: Float32Array = new Float32Array(256 * DETACH_STRIDE);
   private detachedCount = 0;
@@ -322,11 +331,22 @@ export class TreeSimulation {
       this.archetype.morphotype.branchingZone.activationBiasKnots;
     this.applyArchitecture(year);
     const signal = new Map<number, number>();
+    /** Suma de señales sin la envolvente: la envolvente reparte el vigor, no lo resta. */
+    let rawTotal = 0;
+    // Dirección de arte: la envolvente de copa de la especie modula la señal de cada yema.
+    const program = this.species.crownEnvelope;
+    const shape = program ? envelopeAt(program, s.timeYears) : null;
+    // El líder marca la altura: su yema terminal no se modula.
+    const envelopeFactor = (bud: Bud): number =>
+      shape && !(bud.kind === 'terminal' && s.axes[bud.axisId]?.parentAxisId === null)
+        ? envelopeSignalFactor(envelopeDistance(shape, budPosition(s, bud)))
+        : 1;
     for (const list of budsBySegment.values()) {
       for (const bud of list) {
         if (!eligible(bud)) continue;
         if (bud.kind === 'terminal') {
-          signal.set(bud.id, bud.exposure01);
+          rawTotal += bud.exposure01;
+          signal.set(bud.id, bud.exposure01 * envelopeFactor(bud));
           continue;
         }
         const axis = s.axes[bud.axisId]!;
@@ -337,7 +357,8 @@ export class TreeSimulation {
           activationBias(knots, bud.positionInUnit01) *
           this.frameFor(axis.role).branchingIntensity *
           (inhibited ? 1 - sc.apicalInhibition : 1);
-        signal.set(bud.id, bud.exposure01 * propensity);
+        rawTotal += bud.exposure01 * propensity;
+        signal.set(bud.id, bud.exposure01 * propensity * envelopeFactor(bud));
       }
     }
     const sig = (b: Bud): number => signal.get(b.id) ?? 0;
@@ -375,7 +396,12 @@ export class TreeSimulation {
     const rootSegId = trunk?.segmentIds[0];
     const seedBud = (budsBySegment.get(null) ?? []).find(eligible);
     const qBase = rootSegId !== undefined ? (qSeg.get(rootSegId) ?? 0) : seedBud ? sig(seedBud) : 0;
-    const budget = sc.vigorAlpha * qBase; // presupuesto anual (modelo por brote)
+    // Saturación artística: cerca del tamaño de madera objetivo el vigor cae (copa estable).
+    const target = this.species.architecture.woodTargetSegments;
+    const saturation = target
+      ? Math.max(0.1, Math.min(1, 1.6 * (1 - segments.length / target)))
+      : 1;
+    const budget = sc.vigorAlpha * (shape ? rawTotal : qBase) * saturation; // presupuesto anual
     s.lastBaseExposure = qBase;
     s.lastBudget = budget;
 
@@ -483,7 +509,45 @@ export class TreeSimulation {
             kind: 'leader-lost',
             id: axis.id,
           });
+          this.formLimbs(axis, year);
         }
+      }
+    }
+  }
+
+  /**
+   * Dirección de arte: al perder el líder, la copa se arma con N ramas madre repartidas
+   * en azimut desde la cima del tronco (la "corona" de un roble aislado), en lugar de
+   * dejarlo al azar de qué laterales sobreviven.
+   */
+  private formLimbs(trunk: Axis, year: number): void {
+    const s = this.state;
+    const { scale: sc } = this.archetype;
+    const range = this.species.architecture.forkLimbs;
+    const carriers = trunk.segmentIds
+      .slice(-3)
+      .map((id) => s.segments[id]!)
+      .filter(Boolean);
+    if (!range || carriers.length === 0) return;
+    const u = eventUniform(s.seed, trunk.id, 1, Channel.leaderLoss);
+    const n = range[0] + Math.min(range[1] - range[0], Math.floor(u * (range[1] - range[0] + 1)));
+    const base = 2 * Math.PI * eventUniform(s.seed, trunk.id, 2, Channel.leaderLoss);
+    for (let i = 0; i < n; i++) {
+      const carrier = carriers[carriers.length - 1 - (i % carriers.length)]!;
+      const id = s.nextId++;
+      const jitter = 0.35 * eventSigned(s.seed, id, 0, Channel.azimuthJitter);
+      const bud = newBud(id, trunk.id, carrier.id, 'lateral', s.timeYears, year, {
+        azimuthRad: base + (i * 2 * Math.PI) / n + jitter,
+        positionInUnit01: 1,
+      });
+      bud.allocated = sc.metamerCost * sc.maxMetamersPerShoot;
+      s.buds[id] = bud;
+      this.activateLateral(bud, s.timeYears);
+      // La primera rama madre releva al líder casi en vertical: la copa cierra por arriba.
+      const limb = s.axes[bud.axisId];
+      if (i === 0 && limb && limb.id !== trunk.id) {
+        limb.uprightRelay = true;
+        bud.heading = normalizeOr(add(UP, scale(limb.preferredAzimuth, 0.35)), UP);
       }
     }
   }
@@ -589,6 +653,9 @@ export class TreeSimulation {
     const growing = Object.values(s.growthUnits).filter((gu) => !gu.elongationComplete);
     let segmentCount = Object.keys(s.segments).length;
     this.budCount = Object.keys(s.buds).length;
+    this.envelope = this.species.crownEnvelope
+      ? envelopeAt(this.species.crownEnvelope, s.timeYears)
+      : null;
     this.treeHeight = 0;
     for (const g of Object.values(s.segments)) {
       if (g.end[1] > this.treeHeight) this.treeHeight = g.end[1];
@@ -639,10 +706,9 @@ export class TreeSimulation {
         ? 0
         : this.species.morphology.lowerCrownSpreadDeg *
           Math.max(0, 1 - Math.max(0, basePos[1]) / this.treeHeight);
-    const inclinationDeg = Math.min(
-      Math.max(95, frame.targetInclinationDeg),
-      frame.targetInclinationDeg + spread,
-    );
+    const inclinationDeg = axis.uprightRelay
+      ? 15
+      : Math.min(Math.max(95, frame.targetInclinationDeg), frame.targetInclinationDeg + spread);
     const target = inclinationTargetDirection(
       tangent,
       UP,
@@ -650,14 +716,23 @@ export class TreeSimulation {
       (inclinationDeg * Math.PI) / 180,
     );
     const noisePos = axis.metamerCount * 0.35;
-    const noise = scale(
+    // El tronco serpentea menos que las ramas.
+    const noiseAmp = axis.role === 'trunk' ? sc.headingNoise * 0.35 : sc.headingNoise;
+    let noise = scale(
       [
         smoothNoise1D(s.seed, axis.id, noisePos, Channel.headingNoiseX),
         0,
         smoothNoise1D(s.seed, axis.id, noisePos, Channel.headingNoiseZ),
       ],
-      sc.headingNoise,
+      noiseAmp,
     );
+    // Cerca del contorno de la envolvente, el brote se curva hacia dentro.
+    if (this.envelope && axis.role !== 'trunk') {
+      const d = envelopeDistance(this.envelope, basePos);
+      if (d > 0.8) {
+        noise = add(noise, scale(envelopeNormal(this.envelope, basePos), -(d - 0.8) * 3));
+      }
+    }
     const height = Math.max(0, basePos[1]);
     const jitter = 1 + 0.15 * eventSigned(s.seed, gu.id, gu.emittedMetamers, Channel.lengthJitter);
     const lengthM =
@@ -780,7 +855,7 @@ export class TreeSimulation {
   private thicken(): void {
     const s = this.state;
     const { scale: sc, morphotype } = this.archetype;
-    const exponent = morphotype.radiusPipeExponent;
+    const exponent = this.species.morphology.radiusPipeExponent ?? morphotype.radiusPipeExponent;
     pipeTargetRadius([], exponent); // valida el exponente
     const cap = Math.max(0, sc.maxRadialGrowthMPerYear) * DT_YEARS;
     const all = Object.values(s.segments);
@@ -828,6 +903,13 @@ export class TreeSimulation {
     const dying: Axis[] = [];
     // Poda natural: laterales del tronco insertas en la parte baja (fuste limpio).
     const pruning = this.species.architecture.selfPruning;
+    const envelopeProgram = this.species.crownEnvelope;
+    const shape = envelopeProgram ? envelopeAt(envelopeProgram, t0) : null;
+    // Solo se aclaran ejes terminales (sin ejes hijos vivos): nunca una rama que porta copa.
+    const hasChildren = new Set<number>();
+    for (const a of Object.values(s.axes)) {
+      if (a.woodState === 'living' && a.parentAxisId !== null) hasChildren.add(a.parentAxisId);
+    }
     const trunkId = rootAxisId(s);
     let height = 0;
     if (pruning) for (const g of Object.values(s.segments)) height = Math.max(height, g.end[1]);
@@ -839,7 +921,10 @@ export class TreeSimulation {
         const base = s.segments[axis.segmentIds[0] ?? -1];
         // Ramas temporales: las juveniles (anteriores a la pérdida del líder) y las no
         // estructurales. Las ramas madre de la copa adulta se conservan.
-        const juvenile = axis.bornAtYears < this.leaderLossYear();
+        // (las juveniles solo durante la formación de la copa: una rama madre ya hecha no se
+        // poda años después aunque el árbol crezca por encima de ella).
+        const lossYear = this.leaderLossYear();
+        const juvenile = axis.bornAtYears < lossYear && t0 < lossYear + 8;
         const minor = !!base && !!carrier && base.radiusM < 0.4 * carrier.radiusM;
         const low = !!carrier && carrier.end[1] < pruning.belowHeightFraction * height;
         if (low && (juvenile || minor)) {
@@ -855,6 +940,18 @@ export class TreeSimulation {
       );
       axis.sustainedDeficit01 =
         (1 - ENGINE.deficitFilter) * axis.sustainedDeficit01 + ENGINE.deficitFilter * deficitNow;
+      // Aclareo artístico: ramillas cuya punta queda en el interior profundo de la copa.
+      if (shape && !hasChildren.has(axis.id) && t0 - axis.bornAtYears > 3) {
+        const tip = s.segments[axis.segmentIds[axis.segmentIds.length - 1] ?? -1];
+        if (
+          tip &&
+          envelopeDistance(shape, tip.end) < 0.5 &&
+          eventUniform(s.seed, axis.id, yearOf(t0), Channel.interiorThinning) < 0.5
+        ) {
+          dying.push(axis);
+          continue;
+        }
+      }
       const persistence = this.frameFor(axis.role).persistence;
       const rate = ENGINE.baseMortalityPerYear * axis.sustainedDeficit01 * (1 - persistence);
       const step = advanceHazard(axis.mortality, rate, 1);

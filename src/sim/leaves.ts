@@ -327,7 +327,9 @@ export function leafPose(
   const ins = (l.insertionDeg * Math.PI) / 180;
   const droop = l.form.shape === 'needle' ? 0.08 : 0.3;
   const blade = add(add(scale(t, Math.cos(ins)), scale(radial, Math.sin(ins))), scale(UP, -droop));
-  const [x, y, z] = bladeBasis(blade, 0.45 * trait(traits, i, LEAF_TRAIT.tilt));
+  // Las hojas anchas se orientan con más variedad: la copa se ve volumétrica de lado.
+  const tiltAmp = l.form.shape === 'needle' ? 0.45 : 1.0;
+  const [x, y, z] = bladeBasis(blade, tiltAmp * trait(traits, i, LEAF_TRAIT.tilt));
   out[o] = pos[0];
   out[o + 1] = pos[1];
   out[o + 2] = pos[2];

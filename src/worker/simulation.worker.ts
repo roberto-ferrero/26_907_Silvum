@@ -35,6 +35,7 @@ function publish(): void {
   const flowers = snapshot.flowers.data.slice();
   const fruits = snapshot.fruits.data.slice();
   const detachments = snapshot.detachments.slice();
+  const { bark } = snapshot;
   post(
     {
       type: 'snapshot',
@@ -47,7 +48,17 @@ function publish(): void {
         detachments,
       },
     },
-    [segments.buffer, leaves.buffer, flowers.buffer, fruits.buffer, detachments.buffer],
+    [
+      segments.buffer,
+      leaves.buffer,
+      flowers.buffer,
+      fruits.buffer,
+      detachments.buffer,
+      bark.positions.buffer,
+      bark.normals.buffer,
+      bark.colors.buffer,
+      bark.indices.buffer,
+    ],
   );
 }
 

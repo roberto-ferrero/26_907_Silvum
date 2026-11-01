@@ -60,4 +60,5 @@ export const Channel = Object.freeze({
   phyllotaxisStart: 7,
   terminalAbortion: 8,
   leaderLoss: 9,
+  interiorThinning: 10,
 });

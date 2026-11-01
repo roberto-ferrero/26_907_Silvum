@@ -1,3 +1,4 @@
+import { buildBarkMesh, type BarkMesh } from './bark-mesh.ts';
 import { seasonName, seasonPhase } from './clock.ts';
 import {
   hexToLinear,
@@ -60,6 +61,8 @@ export interface RenderSnapshot {
   fruitMassKg: number;
   /** Desprendimientos desde la publicación anterior (ver `DETACH_STRIDE`). */
   detachments: Float32Array;
+  /** Malla continua de corteza (tubos por eje). */
+  bark: BarkMesh;
 }
 
 function writeOrgan(
@@ -230,5 +233,6 @@ export function buildRenderSnapshot(
     fruits: fruits.buffers,
     fruitMassKg: fruits.massKg,
     detachments,
+    bark: buildBarkMesh(s),
   };
 }

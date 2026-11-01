@@ -15,23 +15,24 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 
 ## Decisiones de alcance (1 nov 2026)
 
-| #   | Tema           | Decisión                                                                                                                                                                     |
-| --- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Paquete base   | `tree-growth-foundation` como referencia; se rehace con mayor calidad                                                                                                        |
-| 2   | Bonsái         | Árbol libre; la maceta es solo diseño                                                                                                                                        |
-| 3   | Prioridad      | Visual rica sobre base científica                                                                                                                                            |
-| 4   | Especies v1    | Abeto, roble y almendro                                                                                                                                                      |
-| 5   | Interacción    | Tiempo, semilla, viento, luz, atmósfera, ratón sobre ramas. Sin alambrado                                                                                                    |
-| 6   | Rango temporal | Semilla a 30-50 años simulados, velocidad ajustable                                                                                                                          |
-| 7   | Rebobinar      | Sí, con instantáneas                                                                                                                                                         |
-| 8   | Nebari         | Sí, solo visual                                                                                                                                                              |
-| 9   | Estilo         | Realista suave                                                                                                                                                               |
-| 10  | Dispositivos   | Escritorio con WebGPU; aviso si cae a WebGL 2                                                                                                                                |
-| 11  | Build          | Vite + TypeScript                                                                                                                                                            |
-| 12  | Entorno        | Fondo neutro, luz por estación, viento desde el inicio; lluvia y nieve en el futuro                                                                                          |
-| 13  | Diagnóstico    | Sí, panel ocultable                                                                                                                                                          |
-| —   | Rigging        | Rig de ramas con masa y rigidez: combadura por peso, mecimiento por viento, interacción con ratón                                                                            |
-| —   | Hojas          | Formas y morfologías distintas por especie; caducas o perennes; caída visible ocasional, por viento (trayectoria coherente con él) y estacional; cambio de color no uniforme |
+| #   | Tema           | Decisión                                                                                                                                                                          |
+| --- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Paquete base   | `tree-growth-foundation` como referencia; se rehace con mayor calidad                                                                                                             |
+| 2   | Bonsái         | Árbol libre; la maceta es solo diseño                                                                                                                                             |
+| 3   | Prioridad      | Visual rica sobre base científica                                                                                                                                                 |
+| 4   | Especies v1    | Abeto, roble y almendro                                                                                                                                                           |
+| 5   | Interacción    | Tiempo, semilla, viento, luz, atmósfera, ratón sobre ramas. Sin alambrado                                                                                                         |
+| 6   | Rango temporal | Semilla a 30-50 años simulados, velocidad ajustable                                                                                                                               |
+| 7   | Rebobinar      | Sí, con instantáneas                                                                                                                                                              |
+| 8   | Nebari         | Sí, solo visual                                                                                                                                                                   |
+| 9   | Estilo         | Realista suave                                                                                                                                                                    |
+| 10  | Dispositivos   | Escritorio con WebGPU; aviso si cae a WebGL 2                                                                                                                                     |
+| 11  | Build          | Vite + TypeScript                                                                                                                                                                 |
+| 12  | Entorno        | Fondo neutro, luz por estación, viento desde el inicio; lluvia y nieve en el futuro                                                                                               |
+| 13  | Diagnóstico    | Sí, panel ocultable                                                                                                                                                               |
+| 14  | Estética       | (1 nov 2026, tarde) Árboles visualmente icónicos por encima de la fidelidad científica: se admiten guías artísticas (envolvente de copa, ramas madre dirigidas, manojos de hojas) |
+| —   | Rigging        | Rig de ramas con masa y rigidez: combadura por peso, mecimiento por viento, interacción con ratón                                                                                 |
+| —   | Hojas          | Formas y morfologías distintas por especie; caducas o perennes; caída visible ocasional, por viento (trayectoria coherente con él) y estacional; cambio de color no uniforme      |
 
 ---
 
@@ -107,6 +108,7 @@ Notas de la fase 4:
 - Dibujo provisional (hasta la fase 6): hojas, flores y frutos instanciados con geometría por forma y color por hoja calculado en el Worker. Partículas visuales (`src/fx/falling.ts`) para hojas, pétalos y frutos que caen.
 - Morfología del roble revisada contra su canon (Quercus robur aislado; modelo de Rauh con hábito de bifurcación): pérdida de dominancia del líder hacia los 7-11 años con reiteración en ramas madre, aborto de yemas terminales (ramificación aparentemente simpodial y sinuosa), acrotonía, plagiotropía creciente hacia la base de la copa, poda natural de las ramas juveniles bajas (fuste limpio) y cielo lateral en la luz provisional. Métricas de silueta en `tests/crown-metrics.ts` y canon en `tests/oak-canon.test.ts` (40 años: anchura/altura ≈ 0,7-1,0, base de copa ≈ 25-30 %, ≥ 3 ramas madre, sin flecha).
 - Correcciones del motor: el déficit de luz de un eje se mide sobre su subárbol (antes una rama madre sin yemas propias moría con todas sus ramillas vivas); ningún entrenudo crece por debajo del sustrato (adelanto de 3.3); fuera dos costes cuadráticos (conteo de yemas y desprendimiento de ejes).
+- Dirección de arte del roble (decisión 14): envolvente de copa en cúpula que guía la señal de las yemas y curva los brotes hacia dentro (`src/sim/envelope.ts`), 3-5 ramas madre repartidas en azimut al perder el líder y una que lo releva en vertical, aclareo del interior, saturación de madera (≈ 13.000 entrenudos estables de 40 a 80 años), exponente de tuberías 2,35 (tronco ≈ 7-10 cm a 40-80 años) y manojos de 4 hojas por instancia.
 - Pendiente para otras fases: la forma del abeto aún no es cónica y no hay conos; los mecanismos de arquitectura (`architecture` en el preset) están listos para aplicarlos al abeto y al almendro.
 
 ## Fase 5. Rig de ramas, peso y viento
@@ -122,7 +124,7 @@ Notas de la fase 4:
 
 ## Fase 6. Render realista suave
 
-- [ ] 6.1 Tubos con transporte paralelo, subdivisión por curvatura y distancia
+- [~] 6.1 Tubos con transporte paralelo, subdivisión por curvatura y distancia (hecho el tubo continuo por eje con ensanchamiento basal; falta la subdivisión)
 - [ ] 6.2 Uniones de ramas sin costuras visibles (parches o mezcla local)
 - [ ] 6.3 Material de corteza PBR con madurez de corteza por edad
 - [ ] 6.4 Hojas instanciadas por cohortes con LOD que preserve el área; agujas para coníferas

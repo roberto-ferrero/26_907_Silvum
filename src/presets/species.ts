@@ -14,6 +14,8 @@ const NO_ARCHITECTURE: ArchitectureProgram = {
   terminalAbortion: {},
   selfPruning: null,
   lateralSkyWeight: 0,
+  forkLimbs: null,
+  woodTargetSegments: null,
 };
 
 type Frame = [
@@ -58,6 +60,7 @@ const ABIES_ALBA: SpeciesPreset = {
   phyllotaxis: { mode: 'spiral', divergenceDeg: 137.5 },
   morphology: { inclinationOffsetDeg: { branch: 4 }, branchingFactor: 1, lowerCrownSpreadDeg: 0 },
   architecture: NO_ARCHITECTURE,
+  crownEnvelope: null,
   phenology: {
     budRelease: [0.36, 0.42],
     elongation: [0.37, 0.52],
@@ -125,6 +128,8 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     maxTurnRadPerM: 13,
     vigorAlpha: 7.5,
     maxMetamersPerShoot: 8,
+    maxRadialGrowthMPerYear: 0.0025,
+    cambialDemandMPerYear: 0.0001,
     roleLengthFactor: { trunk: 1, scaffold: 1.05, branch: 0.95, twig: 0.7 },
   },
   phyllotaxis: { mode: 'spiral', divergenceDeg: 144 },
@@ -132,6 +137,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     inclinationOffsetDeg: {},
     branchingFactor: 1,
     lowerCrownSpreadDeg: 30,
+    radiusPipeExponent: 2.35,
     // [etapa, ángulo de nacimiento, inclinación objetivo, ramificación, λ, persistencia]
     roles: {
       trunk: role(
@@ -168,10 +174,22 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     ],
   },
   architecture: {
-    leaderLossYears: [7, 11],
+    leaderLossYears: [5, 7],
     terminalAbortion: { scaffold: 0.06, branch: 0.22, twig: 0.25 },
-    selfPruning: { belowHeightFraction: 0.25, minAgeYears: 5 },
-    lateralSkyWeight: 0.3,
+    selfPruning: { belowHeightFraction: 0.3, minAgeYears: 4 },
+    lateralSkyWeight: 0.5,
+    forkLimbs: [3, 5],
+    woodTargetSegments: 16000,
+  },
+  // Cúpula ancha del roble aislado: fuste corto y copa más ancha que alta con la edad.
+  crownEnvelope: {
+    maxHeightM: 1.15,
+    growthYears: 20,
+    widthRatio: [0.75, 1.4],
+    widthMaturityYears: 45,
+    crownBase01: 0.3,
+    widest01: 0.35,
+    lowerExponent: 3,
   },
   phenology: {
     budRelease: [0.28, 0.36],
@@ -184,7 +202,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
   leaves: {
     form: {
       shape: 'lobed',
-      lengthM: 0.04,
+      lengthM: 0.05,
       widthRatio: 0.56,
       lobes: 5,
       lobeDepth: 0.42,
@@ -196,10 +214,11 @@ const QUERCUS_ROBUR: SpeciesPreset = {
       petioleRatio: 0.05,
     },
     habit: 'deciduous',
-    perMetamer: 1,
+    perMetamer: 2,
     insertionDeg: 48,
     arrangement: 'node',
-    shortShoots: { probability: 0.75, leaves: 5, maxBudAgeYears: 6 },
+    shortShoots: { probability: 0.9, leaves: 6, maxBudAgeYears: 6 },
+    clusterSize: 4,
     lifespanYears: 1,
     lifespanJitter: 0,
     senescenceSpreadYears: 0.06,
@@ -221,7 +240,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     bloom: [0.34, 0.39],
     flowerLifeYears: 0.03,
     firstFloweringYear: 8,
-    intensity: 0.08,
+    intensity: 0.15,
     maxPerNode: 2,
     petals: 0,
     sizeM: 0.003,
@@ -259,6 +278,7 @@ const PRUNUS_DULCIS: SpeciesPreset = {
     lowerCrownSpreadDeg: 0,
   },
   architecture: NO_ARCHITECTURE,
+  crownEnvelope: null,
   phenology: {
     budRelease: [0.19, 0.28],
     elongation: [0.2, 0.45],

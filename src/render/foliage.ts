@@ -6,6 +6,7 @@ import { getSpecies } from '../sim/species.ts';
 import {
   createFlowerGeometry,
   createFruitGeometry,
+  createLeafClusterGeometry,
   createLeafGeometry,
   createPetalGeometry,
 } from './organ-geometry.ts';
@@ -56,7 +57,8 @@ export class FoliageView {
       // Otro árbol (o vuelta atrás): fuera las partículas del anterior.
       this.individual = key;
       this.falling.particles.length = 0;
-      this.leaves.setGeometry(key, () => createLeafGeometry(snapshot.leafForm));
+      const cluster = species.leaves.clusterSize ?? 1;
+      this.leaves.setGeometry(key, () => createLeafClusterGeometry(snapshot.leafForm, cluster));
       this.fallenLeaves.setGeometry(key, () => createLeafGeometry(snapshot.leafForm));
       if (species.flowering) {
         const program = species.flowering;
