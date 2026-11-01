@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { BranchRig } from './fx/rig.ts';
 import { BarkView } from './render/bark.ts';
+import { createPost } from './render/post.ts';
 import { FoliageView } from './render/foliage.ts';
 import { groundHeightLocal } from './render/pot.ts';
 import { createRenderer } from './render/renderer.ts';
@@ -90,13 +91,21 @@ async function main(): Promise<void> {
   if (!container) throw new Error('Falta el contenedor #app');
 
   const params = new URLSearchParams(window.location.search);
+  const wantsPost = params.get('post') !== '0' && params.get('backend') !== 'webgl';
   const { renderer, status } = await createRenderer(container, {
     forceWebGL: params.get('backend') === 'webgl',
+    // Con postprocesado el lienzo va sin MSAA (GTAO necesita profundidad simple; FXAA suaviza).
+    antialias: !wantsPost,
   });
   showBackendStatus(status);
   if (status.kind === 'none') return;
 
   const stage = createStage(renderer);
+  // Postprocesado (AO) solo con WebGPU; `?post=0` lo desactiva.
+  const post =
+    status.kind === 'webgpu' && wantsPost
+      ? createPost(renderer, stage.scene, stage.camera)
+      : { render: () => renderer.render(stage.scene, stage.camera), setEnabled: () => {} };
   const resize = (): void => {
     const { clientWidth: w, clientHeight: h } = container;
     renderer.setSize(w, h);
@@ -132,6 +141,7 @@ async function main(): Promise<void> {
     onPlay: (yearsPerSecond) => send({ type: 'play', yearsPerSecond }),
     onPause: () => send({ type: 'pause' }),
     onWind: (wind) => send({ type: 'wind', wind }),
+    onHaze: (haze) => stage.setHaze(haze),
     onLeafCycle: (mode, yearsPerSecond) => send({ type: 'leafCycle', mode, yearsPerSecond }),
   });
 
@@ -143,6 +153,7 @@ async function main(): Promise<void> {
     }
     if (msg.type === 'foliage') {
       foliage.updateLeaves(msg.leaves, msg.detachments, msg.clockYears, performance.now() / 1000);
+      stage.setSeason(msg.phase);
       panel.updateFoliage(msg.phase, msg.leaves.count);
       return;
     }
@@ -164,6 +175,7 @@ async function main(): Promise<void> {
     latest = msg.snapshot;
     foliage.update(msg.snapshot, performance.now() / 1000);
     panel.update(msg.snapshot);
+    stage.setSeason(msg.snapshot.foliagePhase);
   };
 
   // Atajo de depuración: `?years=N` avanza N años al arrancar.
@@ -189,7 +201,7 @@ async function main(): Promise<void> {
     }
     foliage.frame(clock.getDelta(), performance.now() / 1000);
     stage.update();
-    renderer.render(stage.scene, stage.camera);
+    post.render();
   });
 }
 

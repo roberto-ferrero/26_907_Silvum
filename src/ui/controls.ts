@@ -12,6 +12,8 @@ export interface ControlHandlers {
   onWind(wind: WindSettings): void;
   /** Ciclo de hojas: independiente con su velocidad (años visuales/s) o ligado al crecimiento. */
   onLeafCycle(mode: LeafCycleMode, yearsPerSecond: number): void;
+  /** Bruma de la atmósfera [0, 1]. */
+  onHaze(haze01: number): void;
 }
 
 /**
@@ -47,6 +49,9 @@ export class ControlPanel {
       </label>
       <label>Dirección del viento
         <input data-k="windDir" type="range" min="0" max="360" step="5" value="30" />
+      </label>
+      <label>Atmósfera <span data-k="hazeLabel">limpia</span>
+        <input data-k="haze" type="range" min="0" max="1" step="0.05" value="0" />
       </label>
       <label>Ciclo de hojas
         <select data-k="leafMode">
@@ -96,6 +101,17 @@ export class ControlPanel {
     leafMode.addEventListener('change', sendLeafCycle);
     leafSpeed.addEventListener('input', sendLeafCycle);
     this.coupled = (): boolean => leafMode.value === 'coupled';
+    const haze = q<HTMLInputElement>('haze');
+    const hazeLabel = q<HTMLElement>('hazeLabel');
+    const sendHaze = (): void => {
+      const h = Number(haze.value);
+      hazeLabel.textContent = h === 0 ? 'limpia' : `bruma ${Math.round(h * 100)} %`;
+      handlers.onHaze(h);
+    };
+    const requestedHaze = Number(params.get('haze'));
+    if (requestedHaze > 0) haze.value = String(Math.min(1, requestedHaze));
+    haze.addEventListener('input', sendHaze);
+    sendHaze();
 
     const rate = (): number => Math.round(10 ** Number(speed.value) * 100) / 100;
     const reset = (): void => {

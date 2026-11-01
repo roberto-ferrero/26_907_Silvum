@@ -138,9 +138,9 @@ Notas de la fase 5:
 - [ ] 6.3 Material de corteza PBR con madurez de corteza por edad
 - [ ] 6.4 Hojas instanciadas por cohortes con LOD que preserve el área; agujas para coníferas
 - [ ] 6.5 Maceta de bonsái, sustrato y nebari (raíces superficiales visuales)
-- [ ] 6.6 Iluminación por estación y hora; sombras
-- [ ] 6.7 Atmósfera: niebla y tono de cielo controlables
-- [ ] 6.8 Postprocesado suave (tone mapping, AO)
+- [x] 6.6 Iluminación por estación y hora; sombras
+- [x] 6.7 Atmósfera: niebla y tono de cielo controlables
+- [x] 6.8 Postprocesado suave (tone mapping, AO)
 
 ## Fase 7. Interfaz y control del tiempo
 

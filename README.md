@@ -37,6 +37,8 @@ Parámetros de URL útiles para depurar:
 | `?skeleton=1`                | Vista de diagnóstico con un cilindro por entrenudo en lugar de la corteza continua                                    |
 | `?leafSeconds=20`            | Segundos reales por año del ciclo de hojas independiente                                                              |
 | `?leafCycle=coupled`         | Ciclo de hojas ligado al crecimiento                                                                                  |
+| `?haze=0.4`                  | Bruma inicial de la atmósfera (0-1)                                                                                   |
+| `?post=0`                    | Sin postprocesado (oclusión ambiental y FXAA)                                                                         |
 
 ## Estructura
 
