@@ -14,11 +14,24 @@ export class BarkView {
   });
 
   constructor() {
-    this.object = new THREE.Mesh(new THREE.BufferGeometry(), this.material);
+    // Geometría inicial con todos los atributos: el backend compila el pipeline con ellos.
+    this.object = new THREE.Mesh(BarkView.placeholder(), this.material);
     this.object.name = 'bark';
     this.object.castShadow = true;
     this.object.receiveShadow = true;
     this.object.frustumCulled = false;
+  }
+
+  private static placeholder(): THREE.BufferGeometry {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    g.setAttribute(
+      'normal',
+      new THREE.BufferAttribute(new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0]), 3),
+    );
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(9), 3));
+    g.setIndex(new THREE.BufferAttribute(new Uint32Array([0, 1, 2]), 1));
+    return g;
   }
 
   update(mesh: BarkMesh): void {

@@ -173,7 +173,7 @@ export function createPetalGeometry(): THREE.BufferGeometry {
  */
 export function createFlowerGeometry(program: FloweringProgram): THREE.BufferGeometry {
   if (program.petals === 0) {
-    return tint(new THREE.IcosahedronGeometry(0.5, 1).toNonIndexed(), 1, 1, 1);
+    return tint(new THREE.IcosahedronGeometry(0.5, 1), 1, 1, 1);
   }
   const parts: THREE.BufferGeometry[] = [];
   for (let k = 0; k < program.petals; k++) {
