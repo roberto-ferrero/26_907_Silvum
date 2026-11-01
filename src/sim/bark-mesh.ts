@@ -67,6 +67,8 @@ const DEAD_WOOD = hex(0x8f8a80);
 /** Altura (m) y exceso de radio del ensanchamiento basal del tronco. */
 const FLARE_HEIGHT_M = 0.07;
 const FLARE = 0.7;
+/** Radio del cuello de rama, como fracción del radio del portador. */
+const COLLAR = 0.8;
 
 function sidesFor(radiusM: number): number {
   if (radiusM > 0.012) return 12;
@@ -146,6 +148,9 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
     rig.axisCom.set(com, a * 3);
     let frame = segs[0]!.frameU;
     let tangent = segs[0]!.direction;
+    // Radio del portador en la inserción (0 en el tronco).
+    const parentRadius =
+      axis.parentSegmentId !== null ? (s.segments[axis.parentSegmentId]?.radiusM ?? 0) : 0;
     // Arco recorrido a lo largo del eje (coordenada v de la corteza).
     let arc = 0;
     for (let r = 0; r <= segs.length; r++) {
@@ -173,6 +178,13 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       if (axis.parentAxisId === null && center[1] < FLARE_HEIGHT_M) {
         const f = 1 - center[1] / FLARE_HEIGHT_M;
         radius *= 1 + FLARE * f * f;
+      }
+      // Unión con el portador (6.2): un cuello de rama que nace dentro del tubo del
+      // portador y se afina en los dos primeros anillos, en lugar de un corte seco.
+      if (parentRadius > 0 && r <= 1 && segs.length > 1) {
+        const collar = COLLAR * Math.min(parentRadius, radius * 3);
+        radius =
+          r === 0 ? Math.max(radius, collar) : Math.max(radius, radius + (collar - radius) * 0.3);
       }
       const u = normalizeOr(sub(frame, scale(t, dot(frame, t))), frame);
       const w = cross(t, u);
