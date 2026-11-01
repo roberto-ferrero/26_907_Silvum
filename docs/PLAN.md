@@ -137,7 +137,7 @@ Notas de la fase 5:
 - [ ] 6.2 Uniones de ramas sin costuras visibles (parches o mezcla local)
 - [x] 6.3 Material de corteza PBR con madurez de corteza por edad (procedimental: grietas Worley, veteado y relieve; sin texturas)
 - [ ] 6.4 Hojas instanciadas por cohortes con LOD que preserve el área; agujas para coníferas
-- [ ] 6.5 Maceta de bonsái, sustrato y nebari (raíces superficiales visuales)
+- [x] 6.5 Maceta de bonsái, sustrato y nebari (raíces superficiales visuales: 4-7 por individuo, crecen con el tronco y no salen de la maceta)
 - [x] 6.6 Iluminación por estación y hora; sombras
 - [x] 6.7 Atmósfera: niebla y tono de cielo controlables
 - [x] 6.8 Postprocesado suave (tone mapping, AO)

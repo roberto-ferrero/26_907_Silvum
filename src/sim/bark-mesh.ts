@@ -6,6 +6,7 @@
  * Solo dibujo: no altera el estado biológico.
  */
 import { axisMechanics } from './mechanics.ts';
+import { eventSigned, eventUniform, smoothNoise1D } from './random.ts';
 import { getSpecies } from './species.ts';
 import type { TreeState } from './types.ts';
 import { add, cross, dot, normalizeOr, scale, sub, transportNormal, type Vec3 } from './vec3.ts';
@@ -88,6 +89,12 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
     vertexCount += rings * (sides + 1);
     indexCount += (rings - 1) * sides * 6;
     plans.push({ segIds, sides });
+  }
+  // Nebari (6.5): raíces superficiales visuales que crecen con el grosor del tronco.
+  const roots = planRoots(s);
+  for (const root of roots) {
+    vertexCount += root.points.length * (ROOT_SIDES + 1);
+    indexCount += (root.points.length - 1) * ROOT_SIDES * 6;
   }
   const nodeCount = plans.reduce((n, p) => n + p.segIds.length + 1, 0);
   const mech = axisMechanics(s, getSpecies(s.speciesId));
@@ -219,5 +226,104 @@ export function buildBarkMesh(s: TreeState): BarkMesh {
       }
     }
   }
+  // Raíces: tubos rígidos unidos al nudo de la base del tronco (no se mecen).
+  for (const root of roots) {
+    const base = v;
+    let frame: Vec3 = [0, 1, 0];
+    let tangent: Vec3 = root.dirs[0]!;
+    let arc = 0;
+    for (let k = 0; k < root.points.length; k++) {
+      const center = root.points[k]!;
+      const t = root.dirs[k]!;
+      frame = transportNormal(frame, tangent, t);
+      tangent = t;
+      if (k > 0) arc += Math.hypot(...sub(center, root.points[k - 1]!));
+      const u = normalizeOr(sub(frame, scale(t, dot(frame, t))), [0, 1, 0]);
+      const w = cross(t, u);
+      const radius = root.radii[k]!;
+      for (let j = 0; j <= ROOT_SIDES; j++) {
+        const ang = (j / ROOT_SIDES) * Math.PI * 2;
+        const nx = u[0] * Math.cos(ang) + w[0] * Math.sin(ang);
+        const ny = u[1] * Math.cos(ang) + w[1] * Math.sin(ang);
+        const nz = u[2] * Math.cos(ang) + w[2] * Math.sin(ang);
+        const o = v * 3;
+        positions[o] = center[0] + nx * radius;
+        // Aplastada contra el sustrato: más ancha que alta.
+        positions[o + 1] = center[1] + ny * radius * 0.6;
+        positions[o + 2] = center[2] + nz * radius;
+        normals[o] = nx;
+        normals[o + 1] = ny;
+        normals[o + 2] = nz;
+        colors.set(OLD_BARK, o);
+        rig.vertexNode[v] = 0;
+        barkUv[v * 2] = (j / ROOT_SIDES) * 2 * Math.PI * radius;
+        barkUv[v * 2 + 1] = arc;
+        barkAge[v] = 0.8;
+        v++;
+      }
+    }
+    for (let k = 0; k < root.points.length - 1; k++) {
+      for (let j = 0; j < ROOT_SIDES; j++) {
+        const a0 = base + k * (ROOT_SIDES + 1) + j;
+        const b0 = a0 + ROOT_SIDES + 1;
+        indices[ix++] = a0;
+        indices[ix++] = a0 + 1;
+        indices[ix++] = b0;
+        indices[ix++] = a0 + 1;
+        indices[ix++] = b0 + 1;
+        indices[ix++] = b0;
+      }
+    }
+  }
   return { positions, normals, colors, barkUv, barkAge, indices, rig };
+}
+
+const ROOT_SIDES = 7;
+/** Alcance máximo de una raíz desde el eje del tronco (m): no sale de la maceta. */
+const ROOT_MAX_REACH_M = 0.15;
+const ROOT_ORGAN = 0xffff_ff00;
+
+interface RootPlan {
+  points: Vec3[];
+  dirs: Vec3[];
+  radii: number[];
+}
+
+/**
+ * Raíces del nebari: de 4 a 7 por individuo, repartidas en azimut con variación, que
+ * salen del cuello del tronco, serpentean sobre el sustrato y se hunden en él.
+ * Longitud y grosor proporcionales al radio del tronco (crecen con el árbol).
+ */
+function planRoots(s: TreeState): RootPlan[] {
+  const trunk = Object.values(s.axes).find((a) => a.parentAxisId === null);
+  const first = trunk ? s.segments[trunk.segmentIds[0] ?? -1] : undefined;
+  if (!first || first.radiusM < 0.004) return [];
+  const r0 = first.radiusM * (1 + FLARE);
+  const count = 4 + Math.floor(eventUniform(s.seed, ROOT_ORGAN, 0, 0) * 4);
+  const base = eventUniform(s.seed, ROOT_ORGAN, 1, 0) * Math.PI * 2;
+  const out: RootPlan[] = [];
+  const steps = 9;
+  for (let i = 0; i < count; i++) {
+    const az0 = base + (i * 2 * Math.PI) / count + 0.5 * eventSigned(s.seed, ROOT_ORGAN, 10 + i, 0);
+    // Dentro del sustrato de la maceta (≈ 0,15 m desde el tronco en la dirección corta).
+    const length = Math.min(
+      ROOT_MAX_REACH_M - r0 * 0.55,
+      r0 * (1.6 + 1.2 * eventUniform(s.seed, ROOT_ORGAN, 20 + i, 0)),
+    );
+    const thick = r0 * (0.32 + 0.18 * eventUniform(s.seed, ROOT_ORGAN, 30 + i, 0));
+    const points: Vec3[] = [];
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps;
+      const az = az0 + 0.35 * smoothNoise1D(s.seed, ROOT_ORGAN + 1 + i, t * 3, 1);
+      const dist = r0 * 0.55 + t * length;
+      const y = 0.012 * (1 - t) - 0.006 * t * t;
+      points.push([Math.cos(az) * dist, y, Math.sin(az) * dist]);
+    }
+    const dirs = points.map((p, k) =>
+      normalizeOr(sub(points[Math.min(k + 1, steps)]!, points[Math.max(k - 1, 0)]!), [1, 0, 0]),
+    );
+    const radii = points.map((_, k) => thick * (1 - k / steps) ** 1.3 + 0.0006);
+    out.push({ points, dirs, radii });
+  }
+  return out;
 }
