@@ -37,6 +37,8 @@ export interface Axis {
   mortality: HazardState;
   /** Rama madre que releva al líder en vertical (cierra la cima de la copa). */
   uprightRelay?: boolean;
+  /** Combadura por peso ya incorporada a la forma (rad, memoria lenta 5.6). */
+  sagMemoryRad?: number;
 }
 
 /** Un episodio continuo de extensión (un brote anual). */

@@ -159,6 +159,8 @@ export interface ArchitectureProgram {
   forkLimbs: readonly [number, number] | null;
   /** Entrenudos vivos a los que tiende el árbol adulto (saturación artística) o null. */
   woodTargetSegments: number | null;
+  /** Fracción anual de la combadura por peso que pasa a la forma (memoria lenta, 5.6). */
+  shapeMemoryPerYear: number;
 }
 
 export const NO_ARCHITECTURE: ArchitectureProgram = {
@@ -168,6 +170,7 @@ export const NO_ARCHITECTURE: ArchitectureProgram = {
   lateralSkyWeight: 0,
   forkLimbs: null,
   woodTargetSegments: null,
+  shapeMemoryPerYear: 0,
 };
 
 export interface SpeciesPreset {

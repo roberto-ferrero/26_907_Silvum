@@ -16,6 +16,7 @@ const NO_ARCHITECTURE: ArchitectureProgram = {
   lateralSkyWeight: 0,
   forkLimbs: null,
   woodTargetSegments: null,
+  shapeMemoryPerYear: 0,
 };
 
 type Frame = [
@@ -180,6 +181,7 @@ const QUERCUS_ROBUR: SpeciesPreset = {
     lateralSkyWeight: 0.5,
     forkLimbs: [3, 5],
     woodTargetSegments: 16000,
+    shapeMemoryPerYear: 0.05,
   },
   // Cúpula ancha del roble aislado: fuste corto y copa más ancha que alta con la edad.
   crownEnvelope: {

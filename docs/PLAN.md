@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1, 2 y 4 completadas; la fase 3 queda pendiente (se saltó a la 4 por decisión del 1 nov 2026).
+- Estado: fases 0, 1, 2 y 4 completadas; fase 5 en curso; la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -115,12 +115,12 @@ Notas de la fase 4:
 
 ## Fase 5. Rig de ramas, peso y viento
 
-- [ ] 5.1 Rig jerárquico: un hueso por eje (o tramo de eje) con pivote, masa y rigidez dependiente del radio
-- [ ] 5.2 Masa acumulada por subárbol: madera, hojas, flores y frutos
-- [ ] 5.3 Combadura estática por peso (momento acumulado, aproximación de ángulo pequeño, EI artístico declarado)
+- [~] 5.1 Rig jerárquico: un hueso por eje (o tramo de eje) con pivote, masa y rigidez dependiente del radio
+- [x] 5.2 Masa acumulada por subárbol: madera, hojas, flores y frutos
+- [~] 5.3 Combadura estática por peso (momento acumulado, aproximación de ángulo pequeño, EI artístico declarado)
 - [ ] 5.4 Mecimiento dinámico por viento: resortes amortiguados por nivel de rama, ráfagas con ruido coherente
 - [ ] 5.5 Interacción con el ratón: seleccionar, empujar y tirar de una rama sobre el mismo rig
-- [ ] 5.6 Memoria lenta de forma: solo la combadura sostenida modifica la curvatura de referencia en ticks biológicos
+- [x] 5.6 Memoria lenta de forma: solo la combadura sostenida modifica la curvatura de referencia en ticks biológicos
 - [ ] 5.7 Garantía: la pose del rig (viento, ratón) no altera la historia biológica (test)
 - [ ] 5.8 Datos del rig en GPU (pivote, rigidez, nivel) y deformación en el shader de vértices
 

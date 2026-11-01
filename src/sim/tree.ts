@@ -29,6 +29,7 @@ import {
   type EnvelopeShape,
 } from './envelope.ts';
 import { DEFAULT_SHADOW, ShadowGrid, type LightField } from './light.ts';
+import { axisMechanics, staticBend } from './mechanics.ts';
 import {
   activationBias,
   evaluateRoleProgram,
@@ -71,6 +72,7 @@ import {
   add,
   anyPerpendicular,
   normalizeOr,
+  rotateAround,
   projectOnPlane,
   scale,
   transportNormal,
@@ -78,6 +80,11 @@ import {
 } from './vec3.ts';
 import type { WindSettings } from './wind.ts';
 import { pipeTargetRadius } from './wood.ts';
+
+/** Altura mínima (m) del subárbol para seguir incorporando combadura por peso. */
+const SHAPE_MEMORY_CLEARANCE_M = 0.06;
+/** Combadura total que un eje puede incorporar a su forma (rad). */
+const MAX_SAG_MEMORY_RAD = 0.2;
 
 /** Holgura sobre el sustrato por debajo de la cual un entrenudo no puede bajar (m). */
 const SOIL_CLEARANCE_M = 0.015;
@@ -984,6 +991,58 @@ export class TreeSimulation {
       for (const bud of Object.values(s.buds)) if (shed.has(bud.axisId)) delete s.buds[bud.id];
       removeOrphanOrgans(s);
     }
+    this.applyShapeMemory();
+  }
+
+  /**
+   * Memoria lenta de forma (5.6): una fracción de la combadura estática por peso se
+   * incorpora cada año a la forma de referencia (las ramas pesadas bajan con los años).
+   * Solo cuenta la gravedad: el viento y el ratón del rig de presentación nunca entran
+   * aquí. Gira las direcciones del subárbol alrededor del punto de inserción.
+   */
+  private applyShapeMemory(): void {
+    const fraction = this.species.architecture.shapeMemoryPerYear;
+    if (!(fraction > 0)) return;
+    const s = this.state;
+    const mech = axisMechanics(s, this.species, 'initial');
+    const children = axisChildren(s);
+    const axes = Object.values(s.axes)
+      .filter((a) => a.woodState === 'living' && a.parentAxisId !== null)
+      .sort((a, b) => a.id - b.id);
+    let changed = false;
+    for (const axis of axes) {
+      const m = mech.get(axis.id);
+      if (!m) continue;
+      // La madera de reacción compensa: cada eje acepta una combadura total acotada.
+      const done = axis.sagMemoryRad ?? 0;
+      const theta = scale(staticBend(m), fraction);
+      const angle = Math.min(Math.hypot(theta[0], theta[1], theta[2]), MAX_SAG_MEMORY_RAD - done);
+      if (angle < 1e-6) continue;
+      const rotationAxis = normalizeOr(theta, [1, 0, 0]);
+      const subtree = descendantAxes(s, axis.id, children);
+      // Sin tocar el sustrato: una rama que ya roza el suelo deja de bajar.
+      let lowest = Infinity;
+      for (const id of subtree) {
+        for (const segId of s.axes[id]!.segmentIds) {
+          lowest = Math.min(lowest, s.segments[segId]?.end[1] ?? Infinity);
+        }
+      }
+      if (lowest < SHAPE_MEMORY_CLEARANCE_M) continue;
+      for (const id of subtree) {
+        for (const segId of s.axes[id]!.segmentIds) {
+          const seg = s.segments[segId];
+          if (!seg) continue;
+          seg.direction = normalizeOr(
+            rotateAround(seg.direction, rotationAxis, angle),
+            seg.direction,
+          );
+          seg.frameU = normalizeOr(rotateAround(seg.frameU, rotationAxis, angle), seg.frameU);
+        }
+      }
+      axis.sagMemoryRad = done + angle;
+      changed = true;
+    }
+    if (changed) updatePositions(s);
   }
 }
 
