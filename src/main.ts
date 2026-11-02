@@ -145,6 +145,10 @@ async function main(): Promise<void> {
     onPause: () => send({ type: 'pause' }),
     onWind: (wind) => send({ type: 'wind', wind }),
     onHaze: (haze) => stage.setHaze(haze),
+    onLight: (light, commit) => {
+      stage.setLight(light);
+      if (commit) send({ type: 'light', light });
+    },
     onLeafCycle: (mode, yearsPerSecond, playing) =>
       send({ type: 'leafCycle', mode, yearsPerSecond, playing }),
     onLeafPhase: (phase) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SHADOW } from '../src/sim/light.ts';
+import { DEFAULT_SHADOW, NEUTRAL_LIGHT, type UserLight } from '../src/sim/light.ts';
 import type { LightField } from '../src/sim/light.ts';
 import { buildLightField, TreeSimulation, type LightModifier } from '../src/sim/tree.ts';
 import type { TreeState } from '../src/sim/types.ts';
@@ -66,6 +66,34 @@ describe('comportamiento', () => {
       (g) => g.axisId !== trunk.id && g.end[1] > trunkTop + 0.03,
     );
     expect(higher.length).toBeGreaterThan(3);
+  });
+});
+
+describe('luz del usuario', () => {
+  const grown = (light?: UserLight): TreeSimulation => {
+    const sim = new TreeSimulation({ archetypeId: ARCHETYPE, seed: 4 });
+    if (light) sim.setLight(light);
+    sim.advanceYears(10);
+    return sim;
+  };
+
+  it('por defecto no cambia la madera', () => {
+    expect(JSON.stringify(grown(NEUTRAL_LIGHT).state.segments)).toBe(
+      JSON.stringify(grown().state.segments),
+    );
+  });
+
+  it('la luz lateral atrae la copa hacia su rumbo', () => {
+    const east = grown({ azimuthRad: 0, lateral01: 1, intensity01: 1 });
+    const west = grown({ azimuthRad: Math.PI, lateral01: 1, intensity01: 1 });
+    expect(meanX(east.state)).toBeGreaterThan(meanX(west.state) + 0.02);
+  });
+
+  it('con menos intensidad el árbol crece menos', () => {
+    const dim = grown({ ...NEUTRAL_LIGHT, intensity01: 0.3 });
+    expect(Object.keys(dim.state.segments).length).toBeLessThan(
+      Object.keys(grown().state.segments).length,
+    );
   });
 });
 

@@ -18,6 +18,44 @@ export interface LightField {
   favorableDirection(p: Vec3): Vec3 | null;
 }
 
+/**
+ * Luz elegida por el usuario (fase 3.4): evento del entorno. Lateralidad 0 e intensidad 1
+ * dejan el campo intacto, así que por defecto no cambia ningún árbol.
+ */
+export interface UserLight {
+  /** Rumbo horizontal desde el que llega la luz (rad, 0 = +X). */
+  azimuthRad: number;
+  /** Cuánto llega de un lado [0, 1]. */
+  lateral01: number;
+  /** Intensidad [0, 1]: menos luz, menos vigor. */
+  intensity01: number;
+}
+
+export const NEUTRAL_LIGHT: UserLight = { azimuthRad: 0.8, lateral01: 0, intensity01: 1 };
+
+/** Radio (m) en el que la exposición pasa del lado de sombra al lado de luz. */
+const LATERAL_SPAN_M = 0.15;
+
+/** Campo de luz modificado por la luz del usuario. */
+export function applyUserLight(base: LightField, light: UserLight): LightField {
+  if (light.lateral01 <= 0 && light.intensity01 >= 1) return base;
+  const dx = Math.cos(light.azimuthRad);
+  const dz = Math.sin(light.azimuthRad);
+  return {
+    exposure(p) {
+      const along = (p[0] * dx + p[2] * dz) / LATERAL_SPAN_M;
+      const side = 1 + 0.7 * light.lateral01 * Math.max(-1, Math.min(1, along));
+      return Math.min(1, base.exposure(p) * side * light.intensity01);
+    },
+    favorableDirection(p) {
+      if (light.lateral01 <= 0) return base.favorableDirection(p);
+      const b = base.favorableDirection(p) ?? [0, 0, 0];
+      const k = 1.5 * light.lateral01;
+      return normalizeOr([b[0] + dx * k, b[1] + 0.4 * k, b[2] + dz * k], [dx, 0.4, dz]);
+    },
+  };
+}
+
 export interface ShadowGridParams {
   cellSizeM: number;
   /** Profundidad de la pirámide en celdas. */

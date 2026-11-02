@@ -1,5 +1,6 @@
 import { seasonName } from '../sim/clock.ts';
 import type { LeafCycleMode } from '../sim/leaf-cycle.ts';
+import { NEUTRAL_LIGHT, type UserLight } from '../sim/light.ts';
 import { listArchetypes } from '../sim/morphotype.ts';
 import type { RenderSnapshot } from '../sim/snapshot.ts';
 import { genericSpeciesId, isSpeciesId, listSpecies } from '../sim/species.ts';
@@ -20,6 +21,8 @@ export interface ControlHandlers {
   onSeek(years: number): void;
   onWind(wind: WindSettings): void;
   onHaze(haze01: number): void;
+  /** Luz: `commit` falso solo actualiza la escena (mientras se arrastra el control). */
+  onLight(light: UserLight, commit: boolean): void;
   /** Ciclo de hojas: independiente o ligado, velocidad (años visuales/s) y reproducción. */
   onLeafCycle(mode: LeafCycleMode, yearsPerSecond: number, playing: boolean): void;
   /** Fija la estación que muestra el ciclo de hojas. */
@@ -129,6 +132,15 @@ export class ControlPanel {
         </label>
         <label>Dirección del viento
           <input data-k="windDir" type="range" min="0" max="360" step="5" value="30" />
+        </label>
+        <label>Luz lateral <span data-k="lightLateralLabel"></span>
+          <input data-k="lightLateral" type="range" min="0" max="1" step="0.05" value="${NEUTRAL_LIGHT.lateral01}" />
+        </label>
+        <label>Dirección de la luz
+          <input data-k="lightDir" type="range" min="0" max="360" step="5" value="45" />
+        </label>
+        <label>Intensidad de la luz <span data-k="lightPowerLabel"></span>
+          <input data-k="lightPower" type="range" min="0.2" max="1" step="0.05" value="${NEUTRAL_LIGHT.intensity01}" />
         </label>
         <label>Atmósfera <span data-k="hazeLabel">limpia</span>
           <input data-k="haze" type="range" min="0" max="1" step="0.05" value="0" />
@@ -263,6 +275,23 @@ export class ControlPanel {
     if (requestedHaze > 0) haze.value = String(Math.min(1, requestedHaze));
     haze.addEventListener('input', sendHaze);
 
+    const lightLateral = q<HTMLInputElement>('lightLateral');
+    const lightDir = q<HTMLInputElement>('lightDir');
+    const lightPower = q<HTMLInputElement>('lightPower');
+    const sendLight = (commit: boolean): void => {
+      const lateral01 = Number(lightLateral.value);
+      const intensity01 = Number(lightPower.value);
+      q<HTMLElement>('lightLateralLabel').textContent =
+        lateral01 === 0 ? 'desde arriba' : `${Math.round(lateral01 * 100)} %`;
+      q<HTMLElement>('lightPowerLabel').textContent = `${Math.round(intensity01 * 100)} %`;
+      const azimuthRad = (Number(lightDir.value) * Math.PI) / 180;
+      handlers.onLight({ azimuthRad, lateral01, intensity01 }, commit);
+    };
+    for (const input of [lightLateral, lightDir, lightPower]) {
+      input.addEventListener('input', () => sendLight(false));
+      input.addEventListener('change', () => sendLight(true));
+    }
+
     // ── Diagnóstico ──
     this.info = q<HTMLElement>('info');
     this.events = q<HTMLElement>('events');
@@ -278,6 +307,7 @@ export class ControlPanel {
     this.showLeafPhase(DEFAULT_LEAF_PHASE);
     sendWind();
     sendHaze();
+    sendLight(true);
     sendLeafCycle();
     handlers.onLeafPhase(DEFAULT_LEAF_PHASE);
     sendLeafLook();

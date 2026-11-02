@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { NEUTRAL_LIGHT, type UserLight } from '../sim/light.ts';
 import { createPot, DEFAULT_POT, soilTopY } from './pot.ts';
 import { fogRange, seasonLook } from './seasonal-light.ts';
 
@@ -12,6 +13,8 @@ export interface StageHandle {
   /** Estación que se ve (fase del año) y bruma [0, 1] (fases 6.6-6.7). */
   setSeason(phase: number): void;
   setHaze(haze01: number): void;
+  /** Luz del usuario: orienta y atenúa el sol de la estación (3.4). */
+  setLight(light: UserLight): void;
   update(): void;
   resize(width: number, height: number): void;
 }
@@ -77,19 +80,25 @@ export function createStage(renderer: THREE.WebGPURenderer): StageHandle {
     fog.near = range.near;
     fog.far = range.far;
   };
+  let light: UserLight = NEUTRAL_LIGHT;
+  let currentPhase = 0.55;
   const setSeason = (phase: number): void => {
+    currentPhase = phase;
     const look = seasonLook(phase);
     const d = 5;
+    // Con luz lateral, el sol llega del rumbo elegido y más bajo.
+    const azimuth = light.lateral01 > 0 ? light.azimuthRad : look.sunAzimuth;
+    const elevation = look.sunElevation * (1 - 0.55 * light.lateral01);
     key.position.set(
-      d * Math.cos(look.sunElevation) * Math.cos(look.sunAzimuth),
-      d * Math.sin(look.sunElevation),
-      d * Math.cos(look.sunElevation) * Math.sin(look.sunAzimuth),
+      d * Math.cos(elevation) * Math.cos(azimuth),
+      d * Math.sin(elevation),
+      d * Math.cos(elevation) * Math.sin(azimuth),
     );
     key.color.setRGB(...look.sunColor, THREE.SRGBColorSpace);
-    key.intensity = look.sunIntensity;
+    key.intensity = look.sunIntensity * (0.25 + 0.75 * light.intensity01);
     hemi.color.setRGB(...look.skyColor, THREE.SRGBColorSpace);
     hemi.groundColor.setRGB(...look.groundColor, THREE.SRGBColorSpace);
-    hemi.intensity = look.hemiIntensity;
+    hemi.intensity = look.hemiIntensity * (0.6 + 0.4 * light.intensity01);
     // Con bruma, el fondo se aclara y se desatura hacia un gris perla.
     const bg = look.background.map((c) => c + (0.86 - c) * haze * 0.6) as [number, number, number];
     background.setRGB(...bg, THREE.SRGBColorSpace);
@@ -103,6 +112,10 @@ export function createStage(renderer: THREE.WebGPURenderer): StageHandle {
     controls,
     plantingPoint,
     setSeason,
+    setLight(next) {
+      light = next;
+      setSeason(currentPhase);
+    },
     setHaze(h) {
       haze = Math.max(0, Math.min(1, h));
       applyFog();

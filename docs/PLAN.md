@@ -4,7 +4,7 @@ Simulador 3D de crecimiento de árboles en el navegador (three.js + WebGPU), pre
 El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia visual rica asentada en principios científicos.
 
 - Última actualización: 2026-11-01
-- Estado: fases 0, 1, 2 y 4 completadas; fases 5, 6, 7 y 9 casi completas (pendientes 5.8, 6.1, 6.4, vigor en 7.6, luz en 7.4 y dt en 9.3); la fase 3 queda pendiente (se pospone para no deshacer la forma afinada del roble).
+- Estado: fases 0, 1, 2 y 4 completadas; fases 5, 6, 7 y 9 casi completas (pendientes 5.8, 6.1, 6.4, vigor en 7.6 y dt en 9.3); de la fase 3 está hecha la 3.4 y una parte de la 3.3 (el resto se pospone para no deshacer la forma afinada de las especies).
 - Leyenda: `[x]` hecho · `[ ]` pendiente · `[~]` en curso
 - Documentos relacionados:
   - Especificación de partida: `Bases_crecimiento_arboles_WebGPU.docx` (v0.1, 31 oct 2026)
@@ -76,7 +76,7 @@ El árbol crece libre: la maceta es solo presentación. Objetivo: experiencia vi
 - [ ] 3.1 Rejilla de densidad foliar (32³ / 64³) construida en Worker
 - [ ] 3.2 Muestreo de cielo y sol con atenuación exponencial (CPU de referencia)
 - [~] 3.3 Señal de espacio libre separada de la de luz (incluye evitar la maceta y el suelo: hecho el suelo; faltan la maceta y el espacio libre)
-- [ ] 3.4 Control de luz por el usuario (dirección e intensidad) como evento en el instante actual
+- [x] 3.4 Control de luz por el usuario (dirección e intensidad) como evento en el instante actual (sobre el campo provisional; el árbol responde desde la siguiente brotación)
 - [ ] 3.5 Kernel compute WebGPU (TSL) equivalente a la referencia CPU, con comparación de tolerancias
 
 ## Fase 4. Especies y fenología
@@ -149,7 +149,7 @@ Notas de la fase 5:
 - [x] 7.1 Selector de especie y semilla (cambiar reconstruye desde la semilla)
 - [x] 7.2 Línea de tiempo: reproducir, pausar, velocidad, salto a año
 - [x] 7.3 Rebobinado con instantáneas anuales y repetición de eventos
-- [~] 7.4 Controles de viento, luz y atmósfera
+- [x] 7.4 Controles de viento, luz y atmósfera
 - [x] 7.5 Indicadores de edad simulada, estación y etapa morfológica
 - [~] 7.6 Panel de diagnóstico ocultable: esqueleto, mapa de luz, vigor, registro de eventos
 
@@ -159,7 +159,7 @@ Notas de la fase 7:
 - Panel en secciones plegables: Árbol, Tiempo (línea de tiempo 0-80 años, crecer/pausa, velocidad), Hojas (ciclo, reproducir estaciones, estación, duración del año, número × y tamaño × de hojas), Entorno (viento, dirección, bruma), Estado y Diagnóstico.
 - Línea de tiempo (`src/worker/timeline.ts`): instantáneas del estado cada 3 años, comprimidas (gzip) y precalculadas en segundo plano hasta los 80 años; un salto restaura la anterior más cercana y avanza el resto (< 1 s con el precálculo hecho). El viento es un evento: invalida lo posterior y el precálculo se rehace desde ahí. Compactación anual del estado (fuera yemas laterales muertas y unidades de crecimiento terminadas).
 - Diagnóstico: esqueleto de cilindros, mapa de luz de las yemas (azul sombra, amarillo luz) y registro de los últimos eventos. Pendiente: vista de vigor.
-- 7.4: viento y atmósfera hechos; el control de la luz depende de la fase 3.
+- 7.4: viento, luz (lateralidad, dirección e intensidad) y atmósfera. Con los valores por defecto la luz no altera el crecimiento.
 
 ## Fase 8. Postura activa y mecánica avanzada
 

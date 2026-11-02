@@ -28,7 +28,15 @@ import {
   envelopeSignalFactor,
   type EnvelopeShape,
 } from './envelope.ts';
-import { DEFAULT_SHADOW, ShadowGrid, type LightField, type ShadowGridParams } from './light.ts';
+import {
+  DEFAULT_SHADOW,
+  NEUTRAL_LIGHT,
+  ShadowGrid,
+  applyUserLight,
+  type LightField,
+  type ShadowGridParams,
+  type UserLight,
+} from './light.ts';
 import { axisMechanics, staticBend } from './mechanics.ts';
 import {
   activationBias,
@@ -221,6 +229,22 @@ export class TreeSimulation {
       kind: 'environment-changed',
       id: 0,
       detail: `viento ${wind.intensity01.toFixed(2)}`,
+    });
+  }
+
+  /**
+   * Cambia la luz en el instante actual (evento del entorno, 3.4). El campo de luz se
+   * calcula en cada brotación: el árbol responde desde la siguiente.
+   */
+  setLight(light: UserLight): void {
+    const s = this.state;
+    s.environment = { ...s.environment, light: { ...light } };
+    s.stateRevision += 1;
+    pushEvent(s, this.limits, {
+      timeYears: s.timeYears,
+      kind: 'environment-changed',
+      id: 0,
+      detail: `luz lateral ${light.lateral01.toFixed(2)}, intensidad ${light.intensity01.toFixed(2)}`,
     });
   }
 
@@ -1092,7 +1116,7 @@ export function createTreeState(speciesOrArchetypeId: string, seed: number): Tre
     leafCohorts: {},
     flowerCohorts: {},
     fruits: {},
-    environment: { wind: { intensity01: 0, directionRad: 0 } },
+    environment: { wind: { intensity01: 0, directionRad: 0 }, light: { ...NEUTRAL_LIGHT } },
     lastBaseExposure: 0,
     lastBudget: 0,
     capacityReached: false,
@@ -1210,11 +1234,12 @@ function budPosition(s: TreeState, bud: Bud): Vec3 {
  */
 export function buildLightField(s: TreeState, params: Partial<ShadowGridParams> = {}): LightField {
   const species = getSpecies(s.speciesId);
-  return new ShadowGrid(lightOccluders(s), {
+  const grid = new ShadowGrid(lightOccluders(s), {
     ...DEFAULT_SHADOW,
     lateralWeight: species.architecture.lateralSkyWeight,
     ...params,
   });
+  return applyUserLight(grid, s.environment.light);
 }
 
 /** Órganos que sombrean: yemas vivas (peso 1) y hojas. */

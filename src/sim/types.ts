@@ -1,6 +1,7 @@
 import type { AxisRole } from './morphotype.ts';
 import type { HazardState } from './allocation.ts';
 import type { Vec3 } from './vec3.ts';
+import type { UserLight } from './light.ts';
 import type { WindSettings } from './wind.ts';
 
 /**
@@ -170,6 +171,7 @@ export interface FruitState {
 /** Entorno controlable. Cambiarlo es un evento en el instante actual. */
 export interface Environment {
   wind: WindSettings;
+  light: UserLight;
 }
 
 export interface TreeEvent {

@@ -14,6 +14,7 @@ import type { OrganBuffers } from '../sim/snapshot.ts';
 import { DETACH_KIND, DETACH_STRIDE } from '../sim/organs.ts';
 import { buildRenderSnapshot } from '../sim/snapshot.ts';
 import { TreeSimulation } from '../sim/tree.ts';
+import type { UserLight } from '../sim/light.ts';
 import type { WindSettings } from '../sim/wind.ts';
 import type { FromWorker, ToWorker } from './protocol.ts';
 import { Timeline } from './timeline.ts';
@@ -33,6 +34,8 @@ let pendingTicks = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 /** Viento vigente: se conserva al reiniciar el árbol. */
 let wind: WindSettings | null = null;
+/** Luz vigente: también se conserva al reiniciar. */
+let light: UserLight | null = null;
 
 /**
  * Ciclo de hojas independiente (por defecto): las caducas muestran la estación de un
@@ -277,6 +280,7 @@ async function handle(msg: ToWorker): Promise<void> {
       case 'reset':
         sim = new TreeSimulation({ speciesId: msg.speciesId, seed: msg.seed });
         if (wind) sim.setWind(wind);
+        if (light) sim.setLight(light);
         leafClock.years = 0;
         pendingTicks = 0;
         timeline.reset(sim.state);
@@ -286,6 +290,13 @@ async function handle(msg: ToWorker): Promise<void> {
         wind = msg.wind;
         if (sim) {
           sim.setWind(msg.wind);
+          timeline.invalidateAfter(sim.state);
+        }
+        break;
+      case 'light':
+        light = msg.light;
+        if (sim) {
+          sim.setLight(msg.light);
           timeline.invalidateAfter(sim.state);
         }
         break;
