@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
+import { denoise } from 'three/addons/tsl/display/DenoiseNode.js';
 import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
-import { mrt, normalView, output, pass, renderOutput, screenUV } from 'three/tsl';
+import { mrt, normalView, output, pass, renderOutput, vec4 } from 'three/tsl';
 
 /**
  * Postprocesado suave (fase 6.8): oclusión ambiental GTAO (contacto entre hojas y ramas,
@@ -26,17 +27,21 @@ export function createPost(
   const normal = scenePass.getTextureNode('normal');
   const depth = scenePass.getTextureNode('depth');
   const aoPass = ao(depth, normal, camera);
-  aoPass.resolutionScale = 0.5;
+  // Resolución completa y más muestras: a media resolución el ruido de rotación de GTAO
+  // se veía como motas sobre las hojas (aspecto de moho).
+  aoPass.resolutionScale = 1;
+  aoPass.samples.value = 16;
   aoPass.radius.value = 0.12;
   aoPass.thickness.value = 0.6;
   aoPass.distanceFallOff.value = 0.5;
-  const aoTexture = aoPass.getTextureNode();
+  // Filtro bilateral (respeta bordes por profundidad y normal) que elimina el grano.
+  const aoDenoised = denoise(aoPass.getTextureNode(), depth, normal, camera);
   const color = scenePass.getTextureNode('output');
-  const occlusion = aoTexture.sample(screenUV).r;
-  // Mezcla suave: la oclusión total oscurece al 45 %, nunca a negro. Después, tono y
+  const occlusion = vec4(aoDenoised as unknown as THREE.Node<'vec4'>).r;
+  // Mezcla suave: la oclusión total oscurece al 65 %, nunca a negro. Después, tono y
   // espacio de color, y FXAA para suavizar bordes (la pasada no lleva MSAA).
   pipeline.outputColorTransform = false;
-  pipeline.outputNode = fxaa(renderOutput(color.mul(occlusion.mul(0.55).add(0.45))));
+  pipeline.outputNode = fxaa(renderOutput(color.mul(occlusion.mul(0.35).add(0.65))));
   let enabled = true;
   return {
     render() {
