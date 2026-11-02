@@ -21,7 +21,8 @@ export async function createRenderer(
     antialias: options.antialias ?? true,
     forceWebGL: options.forceWebGL ?? false,
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Acotada: el postprocesado cuesta por píxel.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;

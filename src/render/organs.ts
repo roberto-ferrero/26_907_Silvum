@@ -28,6 +28,13 @@ export class OrganView {
     });
   }
 
+  /** Textura con recorte por alfa (también en las sombras); null, sin ella. */
+  setMask(texture: THREE.Texture | null): void {
+    this.material.map = texture;
+    this.material.alphaTest = texture ? 0.4 : 0;
+    this.material.needsUpdate = true;
+  }
+
   /** Cambia la geometría si `key` cambia (otra especie u otro individuo). */
   setGeometry(key: string, build: () => THREE.BufferGeometry): void {
     if (key === this.geometryKey) return;
@@ -61,6 +68,7 @@ export class OrganView {
   private readonly p = new THREE.Vector3();
   private readonly q = new THREE.Quaternion();
   private readonly s = new THREE.Vector3();
+  private readonly posed = new Float32Array(7);
 
   /**
    * Copia `count` órganos del búfer (stride `ORGAN_STRIDE`). Con `rig`, cada órgano sigue
@@ -87,13 +95,10 @@ export class OrganView {
       const o = i * ORGAN_STRIDE;
       const d = buffers.data;
       if (rig?.rig) {
-        const posed = rig.deformOrgan(
-          d[o + 11]!,
-          [d[o]!, d[o + 1]!, d[o + 2]!],
-          [d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!],
-        );
-        out.position.set(posed.pos[0], posed.pos[1], posed.pos[2]);
-        out.quaternion.set(posed.quat[0], posed.quat[1], posed.quat[2], posed.quat[3]);
+        rig.poseOrgan(d[o + 11]!, d, o, this.posed);
+        const t = this.posed;
+        out.position.set(t[0]!, t[1]!, t[2]!);
+        out.quaternion.set(t[3]!, t[4]!, t[5]!, t[6]!);
       } else {
         out.position.set(d[o]!, d[o + 1]!, d[o + 2]!);
         out.quaternion.set(d[o + 3]!, d[o + 4]!, d[o + 5]!, d[o + 6]!);

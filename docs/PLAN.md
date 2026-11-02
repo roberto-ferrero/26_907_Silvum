@@ -179,6 +179,7 @@ Notas de la fase 9:
 
 - 9.1: límites preasignados (`DEFAULT_LIMITS`); al llegar al de entrenudos el crecimiento se pausa y el panel lo dice; el estado muestra el porcentaje de capacidad usada.
 - 9.2: el Worker mide el coste por tick y por publicación (panel, sección Estado) y publica de forma adaptativa (no más a menudo que el doble de lo que cuesta una instantánea). `npm run bench` imprime una tabla por especie (30 años: tiempo total, ms/tick, instantánea y corteza). Referencia en el equipo de desarrollo (1 nov 2026): roble 3,6 s y 12,5 ms/tick; abeto 8,8 s y 17,5 ms/tick; almendro 5,0 s y 7,6 ms/tick; instantánea 70-230 ms.
+- Rendimiento de dibujo (2 nov 2026, roble a 25 años, 12.952 hojas): de 55 M a 1,07 M de triángulos por fotograma con hojas de 8 triángulos recortadas por máscara alfa (abeto: 1,34 M, acículas de 2 tramos). Oclusión ambiental a media resolución y 8 muestras, con filtro. Densidad de píxeles limitada a 1,5. Rig sin reservas de memoria por vértice: de unos 38 a unos 7 ms de CPU por fotograma con viento, medido en Node (82.000 vértices, 7.918 hojas). 6.4 sigue abierta: falta el LOD por distancia.
 - 9.3: convergencia de la rejilla de luz (celda y media celda: correlación de exposiciones > 0,7). Pendiente: dt frente a dt/2, porque el paso semanal es una constante del motor.
 - 9.4: `tests/behavior.test.ts` con un modificador de luz del motor (`lightModifier`): luz lateral, sombra prolongada, quitar el ápice; la misma semilla ya estaba cubierta.
 

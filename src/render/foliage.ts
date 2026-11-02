@@ -9,6 +9,7 @@ import {
   createFruitGeometry,
   createLeafClusterGeometry,
   createLeafGeometry,
+  createLeafTexture,
   createPetalGeometry,
 } from './organ-geometry.ts';
 import { OrganView } from './organs.ts';
@@ -38,6 +39,7 @@ export class FoliageView {
   private look = { count: 1, size: 1 };
   private leafForm: RenderSnapshot['leafForm'] | null = null;
   private baseCluster = 1;
+  private leafMask: THREE.DataTexture | null = null;
   private individual = '';
   private lastArrivalS = 0;
   /** Último instante del reloj de partículas recibido (ver `RenderSnapshot.clockYears`). */
@@ -68,6 +70,10 @@ export class FoliageView {
       this.individual = key;
       this.falling.particles.length = 0;
       this.leafForm = snapshot.leafForm;
+      this.leafMask?.dispose();
+      this.leafMask = createLeafTexture(snapshot.leafForm);
+      this.leaves.setMask(this.leafMask);
+      this.fallenLeaves.setMask(this.leafMask);
       this.baseCluster = species.leaves.clusterSize ?? 1;
       this.applyLeafGeometry(key);
       this.fallenLeaves.setGeometry(key, () => createLeafGeometry(snapshot.leafForm));

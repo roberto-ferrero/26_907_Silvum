@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { FallingOrgans, rotate, type Ground } from '../src/fx/falling.ts';
-import { createLeafGeometry, leafHalfWidth } from '../src/render/organ-geometry.ts';
+import {
+  createLeafGeometry,
+  leafHalfWidth,
+  rasterizeLeafMask,
+} from '../src/render/organ-geometry.ts';
 import { DEFAULT_POT, groundHeightLocal, soilTopY } from '../src/render/pot.ts';
 import { DETACH_KIND, DETACH_STRIDE } from '../src/sim/organs.ts';
 import { getSpecies } from '../src/sim/species.ts';
@@ -108,11 +112,40 @@ describe('geometría de hojas', () => {
     ).toBeLessThan(0.1);
   });
 
+  it('la máscara recorta el contorno lobulado y deja el nervio dentro', () => {
+    const form = getSpecies('quercus-robur').leaves.form;
+    const [w, h] = [256, 512];
+    const data = rasterizeLeafMask(form, w, h);
+    const alpha = (col: number, row: number): number => data[(row * w + col) * 4 + 3]!;
+    expect(alpha(0, 0)).toBe(0);
+    expect(alpha(w - 1, h - 1)).toBe(0);
+    expect(alpha(w >> 1, h >> 1)).toBe(255);
+    // Senos: la anchura opaca sube y baja a lo largo de la hoja.
+    const widths = Array.from({ length: h }, (_, row) => {
+      let n = 0;
+      for (let col = 0; col < w; col++) if (alpha(col, row) > 0) n++;
+      return n;
+    });
+    // Máximos locales, ignorando las mesetas que deja la cuantización en píxeles.
+    let turns = 0;
+    let rising = false;
+    for (let i = 1; i < h; i++) {
+      if (widths[i]! > widths[i - 1]!) rising = true;
+      else if (widths[i]! < widths[i - 1]!) {
+        if (rising) turns++;
+        rising = false;
+      }
+    }
+    expect(turns).toBeGreaterThanOrEqual(3);
+  });
+
   it('las geometrías de las tres especies son finitas', () => {
     for (const id of ['abies-alba', 'quercus-robur', 'prunus-dulcis']) {
       const g = createLeafGeometry(getSpecies(id).leaves.form);
       const pos = g.getAttribute('position').array as Float32Array;
-      expect(pos.length).toBeGreaterThan(30);
+      expect(pos.length).toBeGreaterThan(20);
+      // Coste acotado: una hoja o un haz de acículas son pocos triángulos.
+      expect((g.getIndex()?.count ?? 0) / 3).toBeLessThanOrEqual(24);
       expect(pos.every(Number.isFinite)).toBe(true);
       expect(g.getAttribute('color')).toBeDefined();
     }

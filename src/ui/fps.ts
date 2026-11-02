@@ -16,6 +16,23 @@ export class FpsCounter {
     document.body.appendChild(this.el);
   }
 
+  /** Última medida del hilo principal por fotograma (ms) y triángulos dibujados. */
+  last_profile: { rig: number; particles: number; submit: number; triangles: number } = {
+    rig: 0,
+    particles: 0,
+    submit: 0,
+    triangles: 0,
+  };
+
+  profile(ms: { rig: number; particles: number; submit: number }, triangles: number): void {
+    const k = 0.1;
+    const l = this.last_profile;
+    l.rig += (ms.rig - l.rig) * k;
+    l.particles += (ms.particles - l.particles) * k;
+    l.submit += (ms.submit - l.submit) * k;
+    l.triangles = triangles;
+  }
+
   /** Llamar una vez por fotograma. */
   tick(now = performance.now()): void {
     this.frames++;

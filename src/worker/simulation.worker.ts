@@ -291,6 +291,8 @@ async function handle(msg: ToWorker): Promise<void> {
         if (sim) {
           sim.setWind(msg.wind);
           timeline.invalidateAfter(sim.state);
+          // La vista toma el viento de la instantánea: también con el crecimiento en pausa.
+          publish();
         }
         break;
       case 'light':

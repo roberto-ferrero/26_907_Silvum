@@ -27,10 +27,9 @@ export function createPost(
   const normal = scenePass.getTextureNode('normal');
   const depth = scenePass.getTextureNode('depth');
   const aoPass = ao(depth, normal, camera);
-  // Resolución completa y más muestras: a media resolución el ruido de rotación de GTAO
-  // se veía como motas sobre las hojas (aspecto de moho).
-  aoPass.resolutionScale = 1;
-  aoPass.samples.value = 16;
+  // Media resolución por coste; sin filtrar, su ruido se veía como motas sobre las hojas.
+  aoPass.resolutionScale = 0.5;
+  aoPass.samples.value = 8;
   aoPass.radius.value = 0.12;
   aoPass.thickness.value = 0.6;
   aoPass.distanceFallOff.value = 0.5;

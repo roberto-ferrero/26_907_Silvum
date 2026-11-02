@@ -218,9 +218,14 @@ async function main(): Promise<void> {
   };
 
   const fps = new FpsCounter();
+  // Solo en desarrollo: acceso desde la consola para medir activando y desactivando partes.
+  if (import.meta.env.DEV) {
+    (window as unknown as { silvum: unknown }).silvum = { renderer, stage, post, foliage, fps };
+  }
   renderer.setAnimationLoop((time) => {
     fps.tick();
     clock.update(time);
+    const t0 = performance.now();
     if (latest && !showSkeleton) {
       rig.step(
         Math.min(clock.getDelta(), 0.05),
@@ -234,9 +239,16 @@ async function main(): Promise<void> {
         foliage.applyRig(rig);
       }
     }
+    const t1 = performance.now();
     foliage.frame(clock.getDelta(), performance.now() / 1000);
     stage.update();
+    const t2 = performance.now();
     post.render();
+    const t3 = performance.now();
+    fps.profile(
+      { rig: t1 - t0, particles: t2 - t1, submit: t3 - t2 },
+      renderer.info.render.triangles,
+    );
   });
 }
 

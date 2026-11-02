@@ -95,13 +95,104 @@ function leafBlade(form: LeafForm, nu: number, nv: number): THREE.BufferGeometry
   return g;
 }
 
+/** Media anchura del rectángulo que contiene la hoja (con margen, relativa a la longitud). */
+function leafBoundHalfWidth(form: LeafForm): number {
+  let max = 0.02;
+  for (let i = 0; i <= 64; i++) max = Math.max(max, leafHalfWidth(form, i / 64));
+  return max * 1.08;
+}
+
+/**
+ * Máscara de una hoja plana (RGBA, filas de la base al ápice): alfa = dentro del contorno
+ * con pecíolo; RGB = factor de color con nervio medio y secundarios. El RGB se rellena
+ * también fuera del contorno para que el filtrado no oscurezca los bordes.
+ */
+export function rasterizeLeafMask(form: LeafForm, width: number, height: number): Uint8Array {
+  const data = new Uint8Array(width * height * 4);
+  const bound = leafBoundHalfWidth(form);
+  const petiole = form.petioleRatio;
+  for (let row = 0; row < height; row++) {
+    const y = (row + 0.5) / height;
+    const inBlade = y >= petiole;
+    const u = inBlade ? (y - petiole) / Math.max(1e-6, 1 - petiole) : 0;
+    const half = inBlade ? leafHalfWidth(form, u) : 0.012;
+    for (let col = 0; col < width; col++) {
+      const x = (((col + 0.5) / width) * 2 - 1) * bound;
+      const v = half > 1e-6 ? Math.abs(x) / half : 2;
+      let shade = 0.92 + 0.08 * (1 - Math.min(1, v)); // margen algo más claro
+      if (Math.abs(x) < 0.008) shade *= 0.72;
+      else if (form.veinPairs > 0 && inBlade) {
+        const s = (u - 0.55 * Math.abs(x)) * form.veinPairs;
+        if (Math.abs(s - Math.round(s)) < 0.07) shade *= 0.84;
+      }
+      const o = (row * width + col) * 4;
+      const c = Math.round(shade * 255);
+      data[o] = c;
+      data[o + 1] = c;
+      data[o + 2] = c;
+      data[o + 3] = Math.abs(x) <= half ? 255 : 0;
+    }
+  }
+  return data;
+}
+
+/** Textura de la hoja (null en acículas, que son geometría). */
+export function createLeafTexture(form: LeafForm): THREE.DataTexture | null {
+  if (form.shape === 'needle') return null;
+  const width = 128;
+  const height = 256;
+  const texture = new THREE.DataTexture(rasterizeLeafMask(form, width, height), width, height);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * Limbo de 8 triángulos: el contorno lo recorta la máscara, y la malla solo da el plegado
+ * por el nervio medio y la curvatura. Con miles de hojas (y otra vez en las sombras) una
+ * malla que siguiera el contorno se llevaba casi todo el coste de dibujo.
+ */
+function leafCard(form: LeafForm): THREE.BufferGeometry {
+  const bound = leafBoundHalfWidth(form);
+  const fold = Math.tan((form.foldDeg * Math.PI) / 180);
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+  for (let i = 0; i <= 2; i++) {
+    const y = i / 2;
+    for (let j = -1; j <= 1; j++) {
+      const x = j * bound;
+      positions.push(x, y, fold * Math.abs(x) - form.curl * y * y);
+      uvs.push((j + 1) / 2, y);
+      colors.push(1, 1, 1);
+    }
+  }
+  for (let i = 0; i < 2; i++) {
+    for (let j = 0; j < 2; j++) {
+      const a = i * 3 + j;
+      indices.push(a, a + 3, a + 1, a + 1, a + 3, a + 4);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  return g;
+}
+
 /**
  * Geometría de una unidad foliar. Aguja: un haz de tres acículas en abanico
- * (una instancia por haz). Resto: un limbo con contorno, plegado y nervadura.
+ * (una instancia por haz). Resto: un limbo recortado con `createLeafTexture`.
  */
 export function createLeafGeometry(form: LeafForm): THREE.BufferGeometry {
-  if (form.shape !== 'needle') return leafBlade(form, 22, 6);
-  const needle = leafBlade(form, 6, 1);
+  if (form.shape !== 'needle') return leafCard(form);
+  const needle = leafBlade(form, 2, 1);
   const parts = [-0.32, 0, 0.32].map((angle, k) => {
     const g = needle.clone();
     g.scale(1, 0.85 + 0.15 * k, 1);
